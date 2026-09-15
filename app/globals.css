@@ -103,6 +103,20 @@ a {
 
 
 /* =========================================
+   MOBILE LOGIN ENTRY    ritesh-15/09/26
+========================================= */
+
+.mobile-login-button {
+  display: none;
+}
+
+.mobile-back-button {
+  display: none;
+}
+
+
+
+/* =========================================
    LOGIN CARD
 ========================================= */
 
@@ -627,40 +641,176 @@ a {
 
 
 /* =========================================
-   MOBILE
+   MOBILE   
 ========================================= */
 
 @media (max-width: 600px) {
 
   .auth-page {
     min-height: 100vh;
+    height: 100vh;
 
-    height: auto;
+    overflow: hidden;
 
-    overflow-y: auto;
-
-    padding: 18px 12px;
+    padding: 0;
   }
 
 
-  .auth-background {
-    background-position: center;
+  /* Full campus artwork */
 
+  .auth-background {
+    position: absolute;
+
+    inset: 0;
+    background-image: url("/images/auth-bg-mobile.png");
+    background-position: center;
     background-size: cover;
   }
 
 
-  .auth-container {
-    max-width: 100%;
+  /* =========================================
+     MOBILE LOGIN BUTTON 
+  ========================================= */
+
+  .mobile-login-button {
+    display: flex;
+
+    position: absolute;
+
+    top: 18px;
+    right: 18px;
+
+    z-index: 10;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    padding: 10px 17px;
+
+    border: 1px solid rgba(255, 255, 255, 0.75);
+
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.92);
+
+    color: #122b4b;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    box-shadow:
+      0 5px 18px rgba(12, 45, 80, 0.14);
+
+    backdrop-filter: blur(8px);
+
+    transition:
+      transform 0.18s ease,
+      background 0.18s ease;
+  }
+
+
+  .mobile-login-button:hover {
+    transform: translateY(-1px);
+
+    background: #ffffff;
+  }
+
+
+  .mobile-login-button span {
+    font-size: 16px;
+  }
+
+
+  /* =========================================
+     LOGIN CARD HIDDEN INITIALLY
+  ========================================= */
+
+  .login-page .auth-container {
+  display: none;
+
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 20;
+
+  width: 100%;
+  max-width: none;
+
+  height: 100vh;
+  max-height: none;
+
+  padding: 12px; 
+ }
+
+
+  /* =========================================
+     LOGIN CARD OPEN
+  ========================================= */
+
+  .login-page .auth-container.mobile-login-open{
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    overflow-y: auto;
+
+    background: rgba(8, 30, 52, 0.18);
+
+    backdrop-filter: blur(5px);
   }
 
 
   .login-card {
-    padding: 25px 18px 19px;
+    width: 100%;
+
+    max-width: 500px;
+
+    max-height: calc(100vh - 24px);
+
+    padding: 22px 18px 19px;
 
     border-radius: 21px;
+
+    overflow-y: auto;
   }
 
+
+  /* =========================================
+     BACK BUTTON
+  ========================================= */
+
+  .mobile-back-button {
+    display: block;
+
+    border: none;
+
+    background: transparent;
+
+    padding: 0;
+
+    margin-bottom: 12px;
+
+    color: #718096;
+
+    font-size: 12px;
+
+    font-weight: 600;
+  }
+
+
+  .mobile-back-button:hover {
+    color: #1467d4;
+  }
+
+
+  /* =========================================
+     LOGIN CONTENT
+  ========================================= */
 
   .login-heading h1 {
     font-size: 20px;
@@ -687,6 +837,8 @@ a {
   }
 
 }
+
+
 
 
 /* =========================================
