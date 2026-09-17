@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
+import { deleteSession } from "@/lib/session";
 
 export async function POST() {
-  return NextResponse.json(
-    {
-      success: false,
-      message: "Logout API - to be built later.",
-    },
-    { status: 501 }
-  );
+  try {
+    await deleteSession();
+
+    return NextResponse.json({
+      success: true,
+      message: "Logged out successfully.",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Something went wrong while logging out.",
+      },
+      { status: 500 }
+    );
+  }
 }

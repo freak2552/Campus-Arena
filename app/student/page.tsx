@@ -1,8 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function StudentHome() {
+  const [user, setUser] = useState<{
+    fullName: string;
+    userId: string;
+    role: string;
+  } | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch("/api/auth/me");
+        const data = await response.json();
+
+        if (data.success) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error("Failed to load user:", error);
+      }
+    }
+
+    loadUser();
+  }, []);
+
+  const hour = new Date().getHours();
+
+  const timeOfDay = hour < 12? "morning" : hour < 17? "afternoon" : "evening";
+
   return (
     <main className="student-page">
       {/* Background decoration */}
@@ -15,6 +43,7 @@ export default function StudentHome() {
           <div className="brand-name">
             Campus<span>Arena</span>
           </div>
+
           <div className="brand-tagline">
             Learn&nbsp; • &nbsp;Compete&nbsp; • &nbsp;Connect&nbsp; • &nbsp;Grow
           </div>
@@ -29,7 +58,7 @@ export default function StudentHome() {
           <div className="avatar">RK</div>
 
           <div className="profile-text">
-            <strong>Ritesh Kumar</strong>
+            <strong>{user?.fullName || "Student"}</strong>
             <small>Student&nbsp; • &nbsp;IT Sem 5</small>
           </div>
 
@@ -39,13 +68,23 @@ export default function StudentHome() {
 
       {/* MAIN */}
       <section className="hero">
-        <p className="greeting">Good evening, Ritesh! 👋</p>
+        <p className="greeting">
+          Good {timeOfDay}, {user?.fullName || "Student"}! 👋
+        </p>
 
         <h1>What do you want to do today?</h1>
 
         <p className="subtitle">
           Choose a path and make progress.
         </p>
+
+        {/* SAME CAMPUS */}
+        <div className="quote quote-right">
+          Same Campus
+          <br />
+          Bigger Possibilities
+          <div className="yellow-line" />
+        </div>
       </section>
 
       {/* CARDS */}
@@ -69,12 +108,15 @@ export default function StudentHome() {
             <li>
               <span>♧</span> Quizzes
             </li>
+
             <li>
               <span>▣</span> Exams
             </li>
+
             <li>
               <span>🏆</span> Tournaments
             </li>
+
             <li>
               <span>♟</span> Leaderboards & Badges
             </li>
@@ -107,12 +149,15 @@ export default function StudentHome() {
             <li>
               <span>♧</span> Find or offer help
             </li>
+
             <li>
               <span>◉</span> Meet on campus
             </li>
+
             <li>
               <span>♟</span> Earn XP & build your profile
             </li>
+
             <li>
               <span>●</span> Be a part of a supportive community
             </li>
@@ -145,12 +190,15 @@ export default function StudentHome() {
             <li>
               <span>▣</span> Career opportunities
             </li>
+
             <li>
               <span>♟</span> Useful resources
             </li>
+
             <li>
               <span>↟</span> Tech & industry updates
             </li>
+
             <li>
               <span>★</span> Student achievements
             </li>
@@ -169,6 +217,7 @@ export default function StudentHome() {
 
         <div className="learning-text">
           <h3>My Learning</h3>
+
           <p>
             Access your courses, notes, assignments and track your progress.
           </p>
@@ -188,13 +237,6 @@ export default function StudentHome() {
           <br />
           builds a brighter tomorrow.”
           <div className="underline" />
-        </div>
-
-        <div className="quote quote-right">
-          Same Campus
-          <br />
-          Bigger Possibilities
-          <div className="yellow-line" />
         </div>
 
         <div className="bottom-features">
@@ -217,26 +259,6 @@ export default function StudentHome() {
             For A Brighter Future
           </div>
         </div>
-
-      </div>
-
-      {/* CAMPUS ILLUSTRATION
-      <div className="campus-art">
-        <div className="building building-one" />
-        <div className="building building-two" />
-        <div className="tree tree-one">🌳</div>
-        <div className="tree tree-two">🌳</div>
-        <div className="student-art">🎒</div>
-      </div> */}
-
-      <div className="side-sign">
-        LEARN
-        <br />
-        SHARE
-        <br />
-        COMPETE
-        <br />
-        GROW
       </div>
 
       <style jsx global>{`
@@ -253,12 +275,15 @@ export default function StudentHome() {
           min-height: 100vh;
           position: relative;
           overflow: hidden;
+
           background-image: url("/images/student_main-home_bg_pc.png");
           background-size: cover;
           background-position: center top;
           background-repeat: no-repeat;
           background-attachment: scroll;
+
           color: #111735;
+
           font-family:
             Inter,
             ui-sans-serif,
@@ -267,27 +292,28 @@ export default function StudentHome() {
             BlinkMacSystemFont,
             "Segoe UI",
             sans-serif;
-          padding: 22px 7.5% 60px;
+
+          padding: 16px 5% 45px;
         }
 
         .sky-glow {
           position: absolute;
-          width: 450px;
-          height: 450px;
+          width: 340px;
+          height: 340px;
           border-radius: 50%;
-          filter: blur(90px);
+          filter: blur(70px);
           pointer-events: none;
         }
 
         .sky-left {
-          left: -300px;
-          top: 180px;
+          left: -225px;
+          top: 135px;
           background: rgba(88, 180, 255, 0.12);
         }
 
         .sky-right {
-          right: -300px;
-          top: 250px;
+          right: -225px;
+          top: 190px;
           background: rgba(88, 180, 255, 0.12);
         }
 
@@ -299,15 +325,15 @@ export default function StudentHome() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          max-width: 1370px;
+          max-width: 1030px;
           margin: 0 auto;
         }
 
         .brand-name {
-          font-size: 38px;
+          font-size: 29px;
           line-height: 1;
           font-weight: 800;
-          letter-spacing: -2px;
+          letter-spacing: -1.5px;
           color: #10152f;
         }
 
@@ -316,34 +342,36 @@ export default function StudentHome() {
         }
 
         .brand-tagline {
-          margin-top: 8px;
+          margin-top: 6px;
           color: #596887;
-          font-size: 16px;
+          font-size: 12px;
         }
 
         .profile-area {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 11px;
+          margin-left: auto;
+          transform: translateX(28px);
         }
 
         .notification {
           position: relative;
-          font-size: 31px;
+          font-size: 24px;
           transform: rotate(180deg);
-          margin-right: 20px;
+          margin-right: 10px;
         }
 
         .notification span {
           position: absolute;
           top: -4px;
-          right: -8px;
-          width: 17px;
-          height: 17px;
+          right: -7px;
+          width: 14px;
+          height: 14px;
           border-radius: 50%;
           background: #ef2d36;
           color: white;
-          font-size: 10px;
+          font-size: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -352,8 +380,8 @@ export default function StudentHome() {
         }
 
         .avatar {
-          width: 51px;
-          height: 51px;
+          width: 39px;
+          height: 39px;
           border-radius: 50%;
           background: linear-gradient(145deg, #222d43, #111827);
           color: white;
@@ -361,30 +389,30 @@ export default function StudentHome() {
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 13px;
-          border: 3px solid white;
-          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+          font-size: 10px;
+          border: 2px solid white;
+          box-shadow: 0 2px 9px rgba(0, 0, 0, 0.12);
         }
 
         .profile-text {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
         }
 
         .profile-text strong {
-          font-size: 15px;
+          font-size: 12px;
         }
 
         .profile-text small {
-          font-size: 14px;
+          font-size: 11px;
           color: #687695;
         }
 
         .chevron {
-          font-size: 30px;
-          margin-left: 20px;
-          transform: translateY(-4px);
+          font-size: 23px;
+          margin-left: 14px;
+          transform: translateY(-3px);
         }
 
         /* HERO */
@@ -393,27 +421,49 @@ export default function StudentHome() {
           position: relative;
           z-index: 5;
           text-align: center;
-          margin: 26px auto 18px;
+          margin: 20px auto 14px;
         }
 
         .greeting {
-          margin: 0 0 9px;
+          margin: 0 0 7px;
           color: #344267;
-          font-size: 21px;
+          font-size: 16px;
         }
 
         .hero h1 {
           margin: 0;
-          font-size: 45px;
+          font-size: 36px;
           line-height: 1.15;
-          letter-spacing: -1.8px;
+          letter-spacing: -1.4px;
           font-weight: 800;
         }
 
         .subtitle {
-          margin: 8px 0 0;
-          font-size: 20px;
+          margin: 6px 0 0;
+          font-size: 15px;
           color: #5a6788;
+        }
+
+        /* SAME CAMPUS */
+
+        .quote-right {
+          position: absolute;
+          right: 1%;
+          top: 13px;
+          text-align: center;
+          font-family: "Comic Sans MS", "Segoe Print", cursive;
+          font-size: 16px;
+          line-height: 1.25;
+          color: #25345e;
+          transform: rotate(-5deg);
+        }
+
+        .yellow-line {
+          width: 65px;
+          height: 3px;
+          background: #f4b900;
+          margin: 6px auto 0;
+          transform: rotate(-4deg);
         }
 
         /* CARDS */
@@ -421,17 +471,17 @@ export default function StudentHome() {
         .cards {
           position: relative;
           z-index: 6;
-          max-width: 1275px;
-          margin: 18px auto 0;
+          max-width: 1050px;
+          margin: 14px auto 0;
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
+          gap: 18px;
         }
 
         .arena-card {
-          min-height: 454px;
-          padding: 25px 29px 20px;
-          border-radius: 20px;
+          min-height: 365px;
+          padding: 20px 23px 18px;
+          border-radius: 16px;
           text-decoration: none;
           color: #101735;
           border: 1px solid;
@@ -475,14 +525,14 @@ export default function StudentHome() {
         }
 
         .card-icon {
-          width: 84px;
-          height: 84px;
-          border-radius: 17px;
+          width: 64px;
+          height: 64px;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 39px;
-          margin-bottom: 11px;
+          font-size: 29px;
+          margin-bottom: 8px;
         }
 
         .compete .card-icon {
@@ -499,14 +549,14 @@ export default function StudentHome() {
 
         .arena-card h2 {
           margin: 0;
-          font-size: 30px;
+          font-size: 24px;
           line-height: 1.1;
-          letter-spacing: -1px;
+          letter-spacing: -0.8px;
         }
 
         .card-description {
-          margin: 5px 0 0;
-          font-size: 18px;
+          margin: 4px 0 0;
+          font-size: 14px;
           line-height: 1.4;
           color: #48587d;
         }
@@ -514,7 +564,7 @@ export default function StudentHome() {
         .divider {
           height: 1px;
           background: rgba(47, 66, 98, 0.14);
-          margin: 17px 0 11px;
+          margin: 13px 0 9px;
         }
 
         .arena-card ul {
@@ -523,21 +573,21 @@ export default function StudentHome() {
           padding: 0;
           display: flex;
           flex-direction: column;
-          gap: 9px;
+          gap: 7px;
         }
 
         .arena-card li {
           display: flex;
           align-items: center;
-          gap: 13px;
-          font-size: 16px;
+          gap: 10px;
+          font-size: 13px;
           color: #243253;
         }
 
         .arena-card li span {
-          width: 25px;
+          width: 21px;
           text-align: center;
-          font-size: 18px;
+          font-size: 15px;
         }
 
         .compete li span {
@@ -554,17 +604,17 @@ export default function StudentHome() {
 
         .enter-button {
           position: absolute;
-          bottom: 19px;
-          left: 28px;
-          right: 28px;
-          height: 53px;
+          bottom: 17px;
+          left: 22px;
+          right: 22px;
+          height: 43px;
           border-radius: 28px;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 25px;
+          gap: 18px;
           font-weight: 700;
-          font-size: 17px;
+          font-size: 14px;
         }
 
         .compete .enter-button {
@@ -583,7 +633,7 @@ export default function StudentHome() {
         }
 
         .enter-button b {
-          font-size: 28px;
+          font-size: 22px;
           font-weight: 400;
         }
 
@@ -592,12 +642,12 @@ export default function StudentHome() {
         .learning-card {
           position: relative;
           z-index: 7;
-          max-width: 994px;
-          min-height: 91px;
-          margin: 29px calc((100% - 1275px) / 2) 0;
-          padding: 14px 25px;
+          max-width: 870px;
+          min-height: 70px;
+          margin: 18px auto 0;
+          padding: 10px 18px;
           border: 1px solid #dce7f4;
-          border-radius: 19px;
+          border-radius: 16px;
           background: rgba(255, 255, 255, 0.86);
           box-shadow: 0 5px 20px rgba(40, 75, 120, 0.05);
           display: flex;
@@ -607,47 +657,47 @@ export default function StudentHome() {
         }
 
         .book-icon {
-          width: 69px;
-          height: 58px;
-          border-radius: 15px;
+          width: 52px;
+          height: 45px;
+          border-radius: 13px;
           background: #eaf3ff;
           border: 1px solid #cbdff7;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #17355e;
-          font-size: 29px;
+          font-size: 22px;
         }
 
         .learning-text {
-          margin-left: 19px;
+          margin-left: 15px;
         }
 
         .learning-text h3 {
           margin: 0;
-          font-size: 21px;
+          font-size: 17px;
         }
 
         .learning-text p {
-          margin: 4px 0 0;
-          font-size: 16px;
+          margin: 3px 0 0;
+          font-size: 13px;
           color: #566584;
         }
 
         .courses-button {
           margin-left: auto;
-          padding: 13px 22px;
+          padding: 10px 17px;
           border: 1px solid #d1e1f6;
           border-radius: 25px;
           background: #f4f8fd;
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 700;
           white-space: nowrap;
         }
 
         .courses-button b {
-          font-size: 22px;
-          margin-left: 14px;
+          font-size: 20px;
+          margin-left: 11px;
           font-weight: 400;
         }
 
@@ -656,146 +706,59 @@ export default function StudentHome() {
         .bottom-area {
           position: relative;
           z-index: 8;
-          max-width: 1370px;
-          margin: 40px auto 0;
-          min-height: 100px;
+          max-width: 1050px;
+          margin: 32px auto 0;
+          min-height: 75px;
         }
 
         .quote {
           position: absolute;
           font-family: "Comic Sans MS", "Segoe Print", cursive;
-          font-size: 17px;
+          font-size: 15px;
           line-height: 1.4;
           color: #25345e;
         }
 
         .quote-left {
-          left: -10px;
+          left: 0;
           bottom: 0;
           transform: rotate(-3deg);
         }
 
-        .quote-right {
-          right: 0;
-          top: -5px;
-          text-align: center;
-          transform: rotate(-5deg);
-        }
-
         .underline {
-          width: 70px;
+          width: 65px;
           height: 3px;
           background: #f4b900;
-          margin-top: 7px;
+          margin-top: 6px;
           transform: rotate(-7deg);
-        }
-
-        .yellow-line {
-          width: 75px;
-          height: 3px;
-          background: #f4b900;
-          margin: 7px auto 0;
-          transform: rotate(-4deg);
         }
 
         .bottom-features {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 29px;
+          gap: 24px;
           color: #506083;
-          font-size: 14px;
-          padding-top: 36px;
+          font-size: 12px;
+          padding-top: 28px;
         }
 
         .bottom-features div {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .bottom-features span {
           color: #101735;
-          font-size: 26px;
+          font-size: 22px;
           font-weight: 700;
         }
 
         .bottom-features i {
           width: 1px;
-          height: 35px;
+          height: 28px;
           background: #aebbd0;
-        }
-
-        /* SIMPLE CAMPUS ART */
-
-        .campus-art {
-          position: absolute;
-          right: -20px;
-          bottom: -10px;
-          width: 430px;
-          height: 300px;
-          pointer-events: none;
-          opacity: 0.85;
-        }
-
-        .building {
-          position: absolute;
-          bottom: 0;
-          background: linear-gradient(145deg, #d8e8f5, #b8cee1);
-          border: 1px solid #aac1d4;
-        }
-
-        .building-one {
-          right: 55px;
-          width: 235px;
-          height: 150px;
-          clip-path: polygon(15% 0, 100% 10%, 100% 100%, 0 100%, 0 20%);
-        }
-
-        .building-two {
-          right: 180px;
-          width: 130px;
-          height: 105px;
-          bottom: 0;
-        }
-
-        .tree {
-          position: absolute;
-          font-size: 75px;
-          filter: saturate(0.75);
-        }
-
-        .tree-one {
-          right: 300px;
-          bottom: 55px;
-        }
-
-        .tree-two {
-          right: -10px;
-          bottom: 45px;
-          font-size: 90px;
-        }
-
-        .student-art {
-          position: absolute;
-          right: 105px;
-          bottom: -10px;
-          font-size: 135px;
-          z-index: 3;
-        }
-
-        .side-sign {
-          position: absolute;
-          right: 10px;
-          bottom: 150px;
-          padding: 13px 8px;
-          color: #52627e;
-          font-weight: 700;
-          font-size: 15px;
-          line-height: 1.25;
-          text-align: center;
-          transform: rotate(-2deg);
-          background: rgba(255, 255, 255, 0.45);
         }
 
         /* RESPONSIVE */
@@ -819,8 +782,6 @@ export default function StudentHome() {
             margin-right: 0;
           }
 
-          .campus-art,
-          .side-sign,
           .quote-right {
             display: none;
           }
@@ -844,6 +805,10 @@ export default function StudentHome() {
           .profile-text,
           .notification {
             display: none;
+          }
+
+          .profile-area {
+            transform: none;
           }
 
           .hero {

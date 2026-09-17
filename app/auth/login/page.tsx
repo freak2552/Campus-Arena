@@ -278,8 +278,8 @@ export default function LoginPage() {
 
             alert("Login successful!");
 
-            // Temporary redirect
-            window.location.href = "/";
+            // Redirect to student dashboard
+            window.location.href = "/student";
         } catch (error) {
             console.error("Login error:", error);
             alert("Unable to connect to the server.");

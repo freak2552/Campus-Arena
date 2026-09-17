@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { comparePassword } from "@/lib/password";
+import { createSession } from "@/lib/session";
 
 export async function POST(request: Request) {
   try {
@@ -87,7 +88,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Successful login
+    // 7. Create session
+    await createSession(user.id);
+
+    // 8. Successful login
     return NextResponse.json(
       {
         success: true,
