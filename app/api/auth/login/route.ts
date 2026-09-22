@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Check valid role
-    if (role !== "student" && role !== "teacher") {
+    if (role !== "student" && role !== "teacher" && role !== "admin") {
       return NextResponse.json(
         {
           success: false,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     // 5. Check role
-    const expectedRole = role === "student" ? "STUDENT" : "TEACHER";
+    const expectedRole = role === "student" ? "STUDENT" : role === "teacher"? "TEACHER" : "ADMIN";
 
     if (user.role !== expectedRole) {
       return NextResponse.json(

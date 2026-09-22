@@ -14,7 +14,10 @@ model User {
   email        String    @unique
   passwordHash String?
   role         Role
-  googleId      String?  @unique
+  googleId     String?   @unique
+
+  collegeId    Int?
+  college      College?  @relation(fields: [collegeId], references: [id], onDelete: SetNull)
 
   sessions     Session[]
 
@@ -28,9 +31,25 @@ model Session {
   userId    Int
   expiresAt DateTime
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+}
+
+model College {
+  id        Int      @id @default(autoincrement())
+  collegeId String   @unique
+
+  name      String
+  code      String   @unique
+  email     String?
+  phone     String?
+  address   String?
+
+  users     User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
