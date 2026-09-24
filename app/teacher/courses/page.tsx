@@ -1,144 +1,253 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const courses = [
-  {
-    title: "Database Management Systems",
-    category: "Database",
-    modules: 4,
-    sections: 3,
-    students: 87,
-    progress: 68,
-    icon: "🗄️",
-    bg: "from-[#ccebdc] to-[#dceaff]",
-  },
-  {
-    title: "HTML & Web Development",
-    category: "Web Development",
-    modules: 5,
-    sections: 2,
-    students: 64,
-    progress: 52,
-    icon: "</>",
-    bg: "from-[#ffe4c4] to-[#ffefc9]",
-  },
-  {
-    title: "Python Programming",
-    category: "Programming",
-    modules: 6,
-    sections: 2,
-    students: 71,
-    progress: 44,
-    icon: "🐍",
-    bg: "from-[#dcecff] to-[#fff0b9]",
-  },
-];
+type Course = {
+  id: number;
+  title: string;
+  description: string | null;
+  department: string | null;
+  category: string | null;
+  semester: string | null;
+  level: string | null;
+  credits: number | null;
+  status: string;
+  visibility: string;
+  studentAccess: string;
+  modules: {
+    id: number;
+    title: string;
+    topics: {
+      id: number;
+      title: string;
+    }[];
+  }[];
+};
 
 export default function MyCoursesPage() {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const response = await fetch("/api/teacher/courses");
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "Failed to load courses"
+          );
+        }
+
+        setCourses(data.courses);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCourses();
+  }, []);
+
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
 
-      <div className="mb-7 flex items-center justify-between gap-6">
-        <div>
-          <p className="mb-1.5 text-xs text-[#638177]">
-            Teacher / My Courses
-          </p>
-
-          <h1 className="text-[31px] font-bold tracking-tight">
-            My Courses
+      <header className="fixed left-0 top-0 z-40 h-16 w-full border-b bg-white">
+        <div className="flex h-full items-center px-6">
+          <h1 className="text-lg font-semibold">
+            Teacher Dashboard
           </h1>
-
-          <p className="mt-1.5 text-sm text-[#687d74]">
-            Manage the courses and learning experiences you teach.
-          </p>
         </div>
+      </header>
 
-        <Link
-          href="/teacher/courses/create"
-          className="rounded-lg bg-[#0b9b61] px-4 py-3 text-[13px] font-bold text-white hover:bg-[#078451]"
-        >
-          + Create Course
-        </Link>
-      </div>
+      <main className="ml-64 pt-16">
 
-      {/* Search */}
-      <div className="mb-[22px] flex gap-3 rounded-[13px] border border-[#e1eee8] bg-white p-3">
+        <div className="min-h-screen p-8">
 
-        <input
-          placeholder="Search my courses..."
-          className="flex-1 rounded-lg border border-[#dce9e3] px-3 py-2.5 text-[13px] outline-none focus:border-[#0b9b61]"
-        />
+          <div className="mx-auto max-w-6xl">
 
-        <select className="rounded-lg border border-[#dce9e3] bg-white px-3 text-[13px] outline-none">
-          <option>All Courses</option>
-          <option>Active</option>
-          <option>Draft</option>
-        </select>
-      </div>
+            {/* Header */}
+            <div className="flex items-center justify-between">
 
-      {/* Courses */}
-      <div className="grid grid-cols-3 gap-5">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  My Courses
+                </h1>
 
-        {courses.map((course) => (
-          <div
-            key={course.title}
-            className="overflow-hidden rounded-[17px] border border-[#e1eee8] bg-white"
-          >
+                <p className="mt-2 text-gray-600">
+                  Manage your courses and course content.
+                </p>
+              </div>
 
-            <div
-              className={`grid h-[145px] place-items-center bg-gradient-to-br ${course.bg}`}
-            >
-              <span className="text-[52px]">
-                {course.icon}
-              </span>
+              <Link
+                href="/teacher/create-course"
+                className="rounded-md bg-black px-5 py-3 text-sm font-medium text-white"
+              >
+                + Create Course
+              </Link>
+
             </div>
 
-            <div className="p-[18px]">
-
-              <span className="inline-block rounded-full bg-[#e5f6ed] px-2 py-1 text-[10px] text-[#0b8e5b]">
-                {course.category}
-              </span>
-
-              <h2 className="mt-2.5 text-[17px] font-bold">
-                {course.title}
-              </h2>
-
-              <p className="mt-1.5 text-[11px] text-[#73857e]">
-                {course.modules} Modules · {course.sections} Sections ·{" "}
-                {course.students} Students
-              </p>
-
-              <div className="mt-[18px] flex justify-between text-[11px]">
-                <span>Student progress</span>
-                <strong>{course.progress}%</strong>
+            {/* Loading */}
+            {loading && (
+              <div className="mt-8 rounded-lg border bg-white p-8 text-center text-gray-500">
+                Loading courses...
               </div>
+            )}
 
-              <div className="mt-2 h-[7px] overflow-hidden rounded-full bg-[#e8efec]">
-                <div
-                  className="h-full rounded-full bg-[#0ca36a]"
-                  style={{ width: `${course.progress}%` }}
-                />
+            {/* Error */}
+            {!loading && error && (
+              <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+                {error}
               </div>
+            )}
 
-              <div className="mt-[18px] flex gap-2">
+            {/* Empty */}
+            {!loading && !error && courses.length === 0 && (
+              <div className="mt-8 rounded-lg border bg-white p-10 text-center">
+
+                <h2 className="text-lg font-semibold">
+                  No courses yet
+                </h2>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  Create your first course to start building
+                  your content.
+                </p>
 
                 <Link
-                  href={`/teacher/courses/${encodeURIComponent(
-                    course.title.toLowerCase().replaceAll(" ", "-")
-                  )}/manage`}
-                  className="flex-1 rounded-lg bg-[#eef6f2] px-3 py-2.5 text-center text-[12px] font-bold text-[#07533c] hover:bg-[#dceee6]"
+                  href="/teacher/create-course"
+                  className="mt-5 inline-block rounded-md bg-black px-5 py-3 text-sm text-white"
                 >
-                  Manage Course
+                  Create Course
                 </Link>
 
-                <button className="rounded-lg border border-[#dce8e3] bg-white px-3 text-sm">
-                  •••
-                </button>
+              </div>
+            )}
+
+            {/* Courses */}
+            {!loading && !error && courses.length > 0 && (
+              <div className="mt-8 grid grid-cols-2 gap-6">
+
+                {courses.map((course) => {
+
+                  const topicCount = course.modules.reduce(
+                    (total, module) =>
+                      total + module.topics.length,
+                    0
+                  );
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="rounded-lg border bg-white p-6"
+                    >
+
+                      <div className="flex items-start justify-between">
+
+                        <div>
+                          <h2 className="text-lg font-semibold">
+                            {course.title}
+                          </h2>
+
+                          <p className="mt-2 text-sm text-gray-500">
+                            {course.description ||
+                              "No description provided."}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full border px-3 py-1 text-xs">
+                          {course.status}
+                        </span>
+
+                      </div>
+
+                      {/* Course information */}
+                      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+
+                        <div>
+                          <span className="text-gray-500">
+                            Department
+                          </span>
+
+                          <p className="font-medium">
+                            {course.department || "-"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-500">
+                            Semester
+                          </span>
+
+                          <p className="font-medium">
+                            {course.semester || "-"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-500">
+                            Modules
+                          </span>
+
+                          <p className="font-medium">
+                            {course.modules.length}
+                          </p>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-500">
+                            Topics
+                          </span>
+
+                          <p className="font-medium">
+                            {topicCount}
+                          </p>
+                        </div>
+
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mt-6 flex gap-3">
+
+                        <Link
+                          href={`/teacher/courses/${course.id}/builder`}
+                          className="rounded-md bg-black px-4 py-2 text-sm text-white"
+                        >
+                          Course Builder
+                        </Link>
+
+                        <Link
+                          href={`/teacher/courses/${course.id}/settings`}
+                          className="rounded-md border px-4 py-2 text-sm"
+                        >
+                          Settings
+                        </Link>
+
+                      </div>
+
+                    </div>
+                  );
+                })}
 
               </div>
-            </div>
+            )}
+
           </div>
-        ))}
-      </div>
+
+        </div>
+
+      </main>
+
     </div>
   );
 }

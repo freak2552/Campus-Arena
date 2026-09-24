@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  userId       String    @unique
+  id           Int     @id @default(autoincrement())
+  userId       String  @unique
   fullName     String
-  email        String    @unique
+  email        String  @unique
   passwordHash String?
   role         Role
-  googleId     String?   @unique
+  googleId     String? @unique
 
-  collegeId    Int?
-  college      College?  @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  collegeId Int?
+  college   College? @relation(fields: [collegeId], references: [id], onDelete: SetNull)
 
-  sessions     Session[]
+  courses Course[]
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  sessions Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Session {
@@ -31,22 +33,22 @@ model Session {
   userId    Int
   expiresAt DateTime
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 }
 
 model College {
-  id        Int      @id @default(autoincrement())
-  collegeId String   @unique
+  id        Int    @id @default(autoincrement())
+  collegeId String @unique
 
-  name      String
-  code      String   @unique
-  email     String?
-  phone     String?
-  address   String?
+  name    String
+  code    String  @unique
+  email   String?
+  phone   String?
+  address String?
 
-  users     User[]
+  users User[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,4 +58,164 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+}
+
+// ================================
+// COURSE SYSTEM
+// ================================
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseVisibility {
+  PRIVATE
+  COLLEGE
+  PUBLIC
+}
+
+enum StudentAccess {
+  OPEN
+  APPROVAL_REQUIRED
+}
+
+enum ContentType {
+  TEXT
+  VIDEO
+  YOUTUBE
+  PDF
+  ARTICLE
+  IMAGE
+  FUN_FACT
+  GOOD_TO_KNOW
+  COMMON_MISTAKE
+}
+
+model Course {
+  id          Int     @id @default(autoincrement())
+  title       String
+  description String?
+  department  String?
+  category    String?
+  semester    String?
+  level       String?
+  credits     Int?
+
+  coverUrl String?
+
+  status        CourseStatus     @default(DRAFT)
+  visibility    CourseVisibility @default(COLLEGE)
+  studentAccess StudentAccess    @default(OPEN)
+
+  teacherId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacher User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  modules CourseModule[]
+
+  @@index([teacherId])
+}
+
+model CourseModule {
+  id       Int    @id @default(autoincrement())
+  title    String
+  position Int
+
+  courseId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  topics Topic[]
+
+  @@index([courseId])
+}
+
+model Topic {
+  id       Int    @id @default(autoincrement())
+  title    String
+  position Int
+
+  moduleId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  module CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  contentBlocks  ContentBlock[]
+  knowledgeCheck KnowledgeCheck?
+
+  @@index([moduleId])
+}
+
+model ContentBlock {
+  id       Int         @id @default(autoincrement())
+  type     ContentType
+  position Int
+
+  content String?
+  url     String?
+
+  topicId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+}
+
+model KnowledgeCheck {
+  id Int @id @default(autoincrement())
+
+  topicId Int @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  questions Question[]
+}
+
+model Question {
+  id          Int     @id @default(autoincrement())
+  question    String
+  explanation String?
+
+  position Int
+
+  knowledgeCheckId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  knowledgeCheck KnowledgeCheck @relation(fields: [knowledgeCheckId], references: [id], onDelete: Cascade)
+
+  options QuestionOption[]
+
+  @@index([knowledgeCheckId])
+}
+
+model QuestionOption {
+  id        Int     @id @default(autoincrement())
+  text      String
+  isCorrect Boolean @default(false)
+
+  position Int
+
+  questionId Int
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
 }

@@ -1,0 +1,976 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+/* =========================================
+   RESET
+========================================= */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: #14243a;
+  background: #ffffff;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+}
+
+
+/* =========================================
+   AUTH PAGE
+========================================= */
+
+.auth-page {
+  position: relative;
+
+  width: 100%;
+  height: 100vh;
+
+  min-height: 600px;
+
+  overflow: hidden;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  padding: 30px 7%;
+}
+
+
+/* =========================================
+   BACKGROUND
+========================================= */
+
+.auth-background {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 0;
+
+  background-image: url("/images/auth-bg.png");
+
+  background-size: cover;
+
+  background-position: center;
+
+  background-repeat: no-repeat;
+}
+
+
+/*
+  IMPORTANT:
+  There is intentionally NO overlay here.
+
+  The campus background should remain
+  completely visible and sharp.
+*/
+
+
+/* =========================================
+   LOGIN CONTAINER
+========================================= */
+
+.auth-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - 60px);
+}
+
+
+/* =========================================
+   MOBILE LOGIN ENTRY    ritesh-15/09/26
+========================================= */
+
+.mobile-login-button {
+  display: none;
+}
+
+.mobile-back-button {
+  display: none;
+}
+
+
+
+/* =========================================
+   LOGIN CARD
+========================================= */
+
+.login-card {
+  width: 100%;
+
+  background: rgba(255, 255, 255, 0.97);
+
+  border-radius: 24px;
+
+  padding: 30px 34px 22px;
+
+  box-shadow:
+    0 20px 60px rgba(12, 45, 80, 0.18);
+
+  border: 1px solid rgba(255, 255, 255, 0.9);
+
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+
+.login-card::-webkit-scrollbar {
+  width: 5px;
+}
+
+.login-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.login-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+/* =========================================
+   HEADING
+========================================= */
+
+.login-heading {
+  text-align: center;
+
+  margin-bottom: 20px;
+}
+
+.login-heading h1 {
+  font-size: 23px;
+
+  line-height: 1.25;
+
+  font-weight: 750;
+
+  color: #122b4b;
+
+  margin-bottom: 6px;
+}
+
+.login-heading p {
+  color: #718096;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   ROLE SELECTOR
+========================================= */
+
+.role-container {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 10px;
+
+  margin-bottom: 18px;
+}
+
+
+.role-button {
+  width: 100%;
+
+  border: 1px solid #dce3eb;
+
+  background: #ffffff;
+
+  border-radius: 14px;
+
+  padding: 11px 12px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  text-align: left;
+
+  color: #172940;
+
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+
+.role-button:hover {
+  transform: translateY(-1px);
+}
+
+
+.role-button.active.student {
+  border-color: #55a1ff;
+
+  background: #eef6ff;
+
+  box-shadow:
+    0 0 0 2px rgba(46, 130, 245, 0.07);
+}
+
+
+.role-button.active.teacher {
+  border-color: #59c59a;
+
+  background: #effaf5;
+
+  box-shadow:
+    0 0 0 2px rgba(52, 168, 113, 0.07);
+}
+
+
+.role-icon {
+  font-size: 21px;
+
+  flex-shrink: 0;
+}
+
+
+.role-content {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+
+.role-content strong {
+  font-size: 13px;
+
+  font-weight: 700;
+}
+
+
+.role-content small {
+  font-size: 9px;
+
+  color: #7b8798;
+}
+
+
+/* =========================================
+   FORM
+========================================= */
+
+.login-form {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 13px;
+}
+
+
+/* =========================================
+   INPUT
+========================================= */
+
+.input-group {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+
+.input-group label {
+  font-size: 12px;
+
+  font-weight: 700;
+
+  color: #26364c;
+}
+
+
+.input-group input {
+  width: 100%;
+
+  height: 44px;
+
+  padding: 0 13px;
+
+  border-radius: 11px;
+
+  border: 1px solid #d9e1e9;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #172940;
+
+  font-size: 13px;
+
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+
+.input-group input::placeholder {
+  color: #a0aaba;
+}
+
+
+.input-group input:focus {
+  border-color: #3788ee;
+
+  box-shadow:
+    0 0 0 3px rgba(55, 136, 238, 0.09);
+}
+
+
+/* =========================================
+   FORGOT PASSWORD
+========================================= */
+
+.forgot-password {
+  display: flex;
+
+  justify-content: flex-end;
+
+  margin-top: -3px;
+}
+
+
+.forgot-password a {
+  font-size: 11px;
+
+  color: #1467d4;
+
+  font-weight: 600;
+}
+
+
+/* =========================================
+   SIGN IN BUTTON
+========================================= */
+
+.login-button {
+  width: 100%;
+
+  height: 46px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #0b3158,
+      #174e7f
+    );
+
+  color: #ffffff;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 9px;
+
+  box-shadow:
+    0 8px 20px rgba(11, 45, 82, 0.16);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+
+.login-button:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 11px 24px rgba(11, 45, 82, 0.21);
+}
+
+
+.arrow {
+  font-size: 17px;
+}
+
+
+/* =========================================
+   DIVIDER
+========================================= */
+
+.divider {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin: 16px 0 11px;
+}
+
+
+.divider span {
+  height: 1px;
+
+  background: #dfe5ec;
+
+  flex: 1;
+}
+
+
+.divider p {
+  font-size: 10px;
+
+  color: #8793a4;
+}
+
+
+/* =========================================
+   GOOGLE
+========================================= */
+
+.google-button {
+  width: 100%;
+
+  height: 44px;
+
+  border-radius: 12px;
+
+  border: 1px solid #dce2e9;
+
+  background: #ffffff;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  color: #26364c;
+
+  font-size: 13px;
+
+  font-weight: 650;
+
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+
+.google-button:hover {
+  background: #f8fafc;
+
+  transform: translateY(-1px);
+}
+
+
+.google-icon {
+  font-size: 19px;
+
+  font-weight: 900;
+
+  color: #4285f4;
+}
+
+
+/* =========================================
+   REGISTER
+========================================= */
+
+.register-text {
+  margin: 0;
+
+  font-size: 12px;
+
+  color: #718096;
+}
+
+
+.register-text a {
+  color: #1467d4;
+
+  font-weight: 700;
+}
+
+
+/* =========================================
+   BACK TO LOGIN   //ritesh-14/09/26
+========================================= */
+
+.back-to-login {
+  margin-bottom: 10px;
+}
+
+.back-to-login a {
+  font-size: 11px;
+  color: #718096;
+  font-weight: 600;
+}
+
+.back-to-login a:hover {
+  color: #1467d4;
+}
+
+
+/* =========================================
+   TERMS
+========================================= */
+
+.terms {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  color: #718096;
+
+  font-size: 10px;
+
+  line-height: 1.4;
+
+  margin-top: -2px;
+}
+
+.terms input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.terms a {
+  color: #1467d4;
+  font-weight: 600;
+}
+
+
+/* =========================================
+   CARD BOTTOM
+========================================= */
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-top: 18px;
+  padding-top: 13px;
+
+  border-top: 1px solid #edf0f4;
+}
+
+
+.card-bottom > span {
+  font-size: 9px;
+
+  color: #a0a9b6;
+
+  letter-spacing: 0.4px;
+}
+
+
+.admin-login {
+  font-size: 12px;
+
+  color: #788495;
+
+  font-weight: 600;
+
+  transition: color 0.18s ease;
+}
+
+
+.admin-login:hover {
+  color: #243c59;
+}
+
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 1000px) {
+
+  .auth-page {
+    justify-content: center;
+
+    padding: 25px;
+  }
+
+  .auth-container {
+    max-width: 480px;
+  }
+
+}
+
+
+/* =========================================
+   MOBILE   
+========================================= */
+
+@media (max-width: 600px) {
+
+  .auth-page {
+    min-height: 100vh;
+    height: 100vh;
+
+    overflow: hidden;
+
+    padding: 0;
+  }
+
+
+  /* Full campus artwork */
+
+  .auth-background {
+    position: absolute;
+
+    inset: 0;
+    background-image: url("/images/auth-bg-mobile.png");
+    background-position: center;
+    background-size: cover;
+  }
+
+
+  /* =========================================
+     MOBILE LOGIN BUTTON 
+  ========================================= */
+
+  .mobile-login-button {
+    display: flex;
+
+    position: absolute;
+
+    top: 18px;
+    right: 18px;
+
+    z-index: 10;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    padding: 10px 17px;
+
+    border: 1px solid rgba(255, 255, 255, 0.75);
+
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.92);
+
+    color: #122b4b;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    box-shadow:
+      0 5px 18px rgba(12, 45, 80, 0.14);
+
+    backdrop-filter: blur(8px);
+
+    transition:
+      transform 0.18s ease,
+      background 0.18s ease;
+  }
+
+
+  .mobile-login-button:hover {
+    transform: translateY(-1px);
+
+    background: #ffffff;
+  }
+
+
+  .mobile-login-button span {
+    font-size: 16px;
+  }
+
+
+  /* =========================================
+     LOGIN CARD HIDDEN INITIALLY
+  ========================================= */
+
+  .login-page .auth-container {
+  display: none;
+
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 20;
+
+  width: 100%;
+  max-width: none;
+
+  height: 100vh;
+  max-height: none;
+
+  padding: 12px; 
+ }
+
+
+  /* =========================================
+     LOGIN CARD OPEN
+  ========================================= */
+
+  .login-page .auth-container.mobile-login-open{
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    overflow-y: auto;
+
+    background: rgba(8, 30, 52, 0.18);
+
+    backdrop-filter: blur(5px);
+  }
+
+
+  .login-card {
+    width: 100%;
+
+    max-width: 500px;
+
+    max-height: calc(100vh - 24px);
+
+    padding: 22px 18px 19px;
+
+    border-radius: 21px;
+
+    overflow-y: auto;
+  }
+
+
+  /* =========================================
+     BACK BUTTON
+  ========================================= */
+
+  .mobile-back-button {
+    display: block;
+
+    border: none;
+
+    background: transparent;
+
+    padding: 0;
+
+    margin-bottom: 12px;
+
+    color: #718096;
+
+    font-size: 12px;
+
+    font-weight: 600;
+  }
+
+
+  .mobile-back-button:hover {
+    color: #1467d4;
+  }
+
+
+  /* =========================================
+     LOGIN CONTENT
+  ========================================= */
+
+  .login-heading h1 {
+    font-size: 20px;
+  }
+
+
+  .login-heading p {
+    font-size: 12px;
+  }
+
+
+  .role-button {
+    padding: 11px 9px;
+  }
+
+
+  .role-content small {
+    display: none;
+  }
+
+
+  .input-group input {
+    height: 45px;
+  }
+
+}
+
+
+
+
+/* =========================================
+   SMALL PHONES
+========================================= */
+
+@media (max-width: 380px) {
+
+  .auth-page {
+    padding: 10px;
+  }
+
+
+  .login-card {
+    padding: 22px 14px 17px;
+  }
+
+
+  .role-icon {
+    font-size: 19px;
+  }
+
+
+  .role-content strong {
+    font-size: 12px;
+  }
+
+
+  .login-heading h1 {
+    font-size: 18px;
+  }
+
+
+  .card-bottom > span {
+    display: none;
+  }
+
+
+  .card-bottom {
+    justify-content: flex-end;
+  }
+
+}
+
+
+/* =========================
+   FORGOT PASSWORD   ritesh-14/09/26
+========================= */
+
+.forgot-card {
+  max-width: 500px;
+}
+
+.forgot-card .login-heading p {
+  max-width: 390px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+
+.forgot-note {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 11px;
+  color: #718096;
+}
+
+.forgot-note p {
+  margin: 0 0 5px;
+}
+
+.forgot-note a {
+  color: #1467d4;
+  font-weight: 700;
+}
+
+.forgot-note a:hover {
+  text-decoration: underline;
+}
+
+/* Success icon */
+
+.success-icon {
+  width: 52px;
+  height: 52px;
+  margin: 5px auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #e8f7ef;
+  color: #198754;
+
+  font-size: 25px;
+  font-weight: 800;
+}
+
+/* Success message */
+
+.success-message {
+  padding: 14px;
+  border-radius: 12px;
+  background: #f7f9fc;
+}
+
+.success-message button {
+  border: none;
+  background: none;
+  color: #1467d4;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.success-message button:hover {
+  text-decoration: underline;
+}
+
+/* Back button */
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  text-decoration: none;
+  margin-top: 18px;
+}
+
+.back-button:hover {
+  text-decoration: none;
+}  
