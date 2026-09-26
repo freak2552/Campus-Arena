@@ -1,17 +1,14 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
-import TeacherHeader from "@/components/teacher/TeacherHeader";
-import TeacherSidebar from "@/components/teacher/TeacherSidebar";
+import TeacherShell from "@/components/teacher/TeacherShell";
 import { requireRole } from "@/lib/auth";
 
 export default async function TeacherLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  let user;
-
   try {
-    user = await requireRole(["TEACHER"]);
+    await requireRole(["TEACHER"]);
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHENTICATED") {
@@ -26,12 +23,5 @@ export default async function TeacherLayout({
     throw error;
   }
 
-  return (
-    <div className="min-h-screen bg-slate-100">
-      <TeacherHeader />
-      <TeacherSidebar />
-
-      {children}
-    </div>
-  );
+  return <TeacherShell>{children}</TeacherShell>;
 }

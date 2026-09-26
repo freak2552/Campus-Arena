@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
 
 export async function GET() {
   try {
+    // Get the actual logged-in teacher
+    const teacher = await requireRole(["TEACHER"]);
+
     const courses = await prisma.course.findMany({
       where: {
-        teacherId: 1, // temporary until session is connected
+        teacherId: teacher.id,
       },
+
       orderBy: {
         createdAt: "desc",
       },
+
       include: {
         modules: {
           include: {
@@ -24,6 +30,32 @@ export async function GET() {
       courses,
     });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "UNAUTHENTICATED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You must be logged in.",
+        },
+        { status: 401 }
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher access required.",
+        },
+        { status: 403 }
+      );
+    }
+
     console.error("Get courses error:", error);
 
     return NextResponse.json(
@@ -39,6 +71,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Get the actual logged-in teacher
+    const teacher = await requireRole(["TEACHER"]);
+
     const body = await request.json();
 
     const {
@@ -51,7 +86,6 @@ export async function POST(request: Request) {
       credits,
       visibility,
       studentAccess,
-      teacherId,
     } = body;
 
     if (!title?.trim()) {
@@ -64,32 +98,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!teacherId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Teacher ID is required",
-        },
-        { status: 400 }
-      );
-    }
-
-    const teacher = await prisma.user.findUnique({
-      where: {
-        id: Number(teacherId),
-      },
-    });
-
-    if (!teacher) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Teacher not found",
-        },
-        { status: 404 }
-      );
-    }
-
     const course = await prisma.course.create({
       data: {
         title: title.trim(),
@@ -98,15 +106,20 @@ export async function POST(request: Request) {
         category: category?.trim() || null,
         semester: semester?.trim() || null,
         level: level?.trim() || null,
+
         credits:
           credits !== undefined &&
           credits !== null &&
           credits !== ""
             ? Number(credits)
             : null,
+
         visibility: visibility || "COLLEGE",
         studentAccess: studentAccess || "OPEN",
-        teacherId: Number(teacherId),
+
+        
+        // Use the logged-in teacher's ID.
+        teacherId: teacher.id,
       },
     });
 
@@ -119,6 +132,32 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "UNAUTHENTICATED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You must be logged in.",
+        },
+        { status: 401 }
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher access required.",
+        },
+        { status: 403 }
+      );
+    }
+
     console.error("Create course error:", error);
 
     return NextResponse.json(

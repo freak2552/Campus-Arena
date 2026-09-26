@@ -1,7 +1,18 @@
-export default function TeacherSidebar() {
+"use client";
+
+type TeacherSidebarProps = {
+  sidebarOpen: boolean;
+};
+
+export default function TeacherSidebar({
+  sidebarOpen,
+}: TeacherSidebarProps) {
+  if (!sidebarOpen) {
+    return null;
+  }
+
   return (
     <aside className="fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 border-r border-slate-200 bg-white shadow-sm">
-      
       <nav className="flex flex-col p-4">
 
         <a
@@ -75,7 +86,6 @@ export default function TeacherSidebar() {
         </a>
 
       </nav>
-
     </aside>
   );
 }

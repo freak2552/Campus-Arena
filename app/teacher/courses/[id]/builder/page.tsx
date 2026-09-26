@@ -185,9 +185,9 @@ export default function CourseBuilderPage() {
         previous.map((module) =>
           module.id === moduleId
             ? {
-                ...module,
-                title: data.module.title,
-              }
+              ...module,
+              title: data.module.title,
+            }
             : module
         )
       );
@@ -287,12 +287,12 @@ export default function CourseBuilderPage() {
         previous.map((module) =>
           module.id === moduleId
             ? {
-                ...module,
-                topics: [
-                  ...module.topics,
-                  data.topic,
-                ],
-              }
+              ...module,
+              topics: [
+                ...module.topics,
+                data.topic,
+              ],
+            }
             : module
         )
       );
@@ -348,17 +348,17 @@ export default function CourseBuilderPage() {
         previous.map((module) =>
           module.id === moduleId
             ? {
-                ...module,
-                topics: module.topics.map(
-                  (topic) =>
-                    topic.id === topicId
-                      ? {
-                          ...topic,
-                          title: data.topic.title,
-                        }
-                      : topic
-                ),
-              }
+              ...module,
+              topics: module.topics.map(
+                (topic) =>
+                  topic.id === topicId
+                    ? {
+                      ...topic,
+                      title: data.topic.title,
+                    }
+                    : topic
+              ),
+            }
             : module
         )
       );
@@ -411,11 +411,11 @@ export default function CourseBuilderPage() {
         previous.map((module) =>
           module.id === moduleId
             ? {
-                ...module,
-                topics: module.topics.filter(
-                  (topic) => topic.id !== topicId
-                ),
-              }
+              ...module,
+              topics: module.topics.filter(
+                (topic) => topic.id !== topicId
+              ),
+            }
             : module
         )
       );
@@ -433,16 +433,8 @@ export default function CourseBuilderPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <header className="fixed left-0 top-0 z-40 h-16 w-full border-b bg-white">
-        <div className="flex h-full items-center px-6">
-          <h1 className="text-lg font-semibold">
-            Teacher Dashboard
-          </h1>
-        </div>
-      </header>
-
-      <main className="ml-64 pt-16">
-        <div className="min-h-screen p-8">
+      <main>
+        <div className="p-8">
 
           <div className="mx-auto max-w-6xl">
 
@@ -657,7 +649,7 @@ export default function CourseBuilderPage() {
                                   className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
                                 >
                                   {deletingModuleId ===
-                                  module.id
+                                    module.id
                                     ? "Deleting..."
                                     : "Delete"}
                                 </button>
@@ -688,52 +680,52 @@ export default function CourseBuilderPage() {
 
                             {addingTopicModuleId ===
                               module.id && (
-                              <div className="mb-4 rounded-md border p-4">
+                                <div className="mb-4 rounded-md border p-4">
 
-                                <input
-                                  type="text"
-                                  value={topicTitle}
-                                  onChange={(e) =>
-                                    setTopicTitle(
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Enter topic title"
-                                  className="w-full rounded-md border px-4 py-3"
-                                />
-
-                                <div className="mt-3 flex gap-2">
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      addTopic(module.id)
+                                  <input
+                                    type="text"
+                                    value={topicTitle}
+                                    onChange={(e) =>
+                                      setTopicTitle(
+                                        e.target.value
+                                      )
                                     }
-                                    disabled={creatingTopic}
-                                    className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-                                  >
-                                    {creatingTopic
-                                      ? "Creating..."
-                                      : "Create Topic"}
-                                  </button>
+                                    placeholder="Enter topic title"
+                                    className="w-full rounded-md border px-4 py-3"
+                                  />
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setAddingTopicModuleId(
-                                        null
-                                      );
-                                      setTopicTitle("");
-                                    }}
-                                    className="rounded-md border px-4 py-2 text-sm"
-                                  >
-                                    Cancel
-                                  </button>
+                                  <div className="mt-3 flex gap-2">
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        addTopic(module.id)
+                                      }
+                                      disabled={creatingTopic}
+                                      className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+                                    >
+                                      {creatingTopic
+                                        ? "Creating..."
+                                        : "Create Topic"}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAddingTopicModuleId(
+                                          null
+                                        );
+                                        setTopicTitle("");
+                                      }}
+                                      className="rounded-md border px-4 py-2 text-sm"
+                                    >
+                                      Cancel
+                                    </button>
+
+                                  </div>
 
                                 </div>
-
-                              </div>
-                            )}
+                              )}
 
                             {module.topics.length === 0 ? (
 
@@ -754,7 +746,7 @@ export default function CourseBuilderPage() {
                                     >
 
                                       {editingTopicId ===
-                                      topic.id ? (
+                                        topic.id ? (
 
                                         <div className="p-4">
 
@@ -851,13 +843,13 @@ export default function CourseBuilderPage() {
                                               className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
                                             >
                                               {deletingTopicId ===
-                                              topic.id
+                                                topic.id
                                                 ? "Deleting..."
                                                 : "Delete"}
                                             </button>
 
                                             <Link
-                                              href={`/teacher/courses/${courseId}/builder/topic/${topic.id}`}
+                                              href={`/teacher/courses/${courseId}/builder/topic/${topic.id}?moduleId=${module.id}`}
                                               className="rounded-md border px-3 py-2 text-sm"
                                             >
                                               Open

@@ -61,17 +61,7 @@ export default function MyCoursesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <header className="fixed left-0 top-0 z-40 h-16 w-full border-b bg-white">
-        <div className="flex h-full items-center px-6">
-          <h1 className="text-lg font-semibold">
-            Teacher Dashboard
-          </h1>
-        </div>
-      </header>
-
-      <main className="ml-64 pt-16">
-
-        <div className="min-h-screen p-8">
+        <div className="p-8">
 
           <div className="mx-auto max-w-6xl">
 
@@ -245,8 +235,6 @@ export default function MyCoursesPage() {
           </div>
 
         </div>
-
-      </main>
 
     </div>
   );
