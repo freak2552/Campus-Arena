@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireRole } from "@/lib/auth";
+import { requireTeacherWithCollege } from "@/lib/auth";
 
 export async function GET() {
   try {
     // Get the actual logged-in teacher
-    const teacher = await requireRole(["TEACHER"]);
+    const teacher = await requireTeacherWithCollege();
 
     const courses = await prisma.course.findMany({
       where: {
@@ -56,6 +56,19 @@ export async function GET() {
       );
     }
 
+    if (
+      error instanceof Error &&
+      error.message === "COLLEGE_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You must join a college before using teacher features.",
+        },
+        { status: 403 }
+      );
+    }
+
     console.error("Get courses error:", error);
 
     return NextResponse.json(
@@ -72,7 +85,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     // Get the actual logged-in teacher
-    const teacher = await requireRole(["TEACHER"]);
+    const teacher = await requireTeacherWithCollege();
 
     const body = await request.json();
 
@@ -109,15 +122,15 @@ export async function POST(request: Request) {
 
         credits:
           credits !== undefined &&
-          credits !== null &&
-          credits !== ""
+            credits !== null &&
+            credits !== ""
             ? Number(credits)
             : null,
 
         visibility: visibility || "COLLEGE",
         studentAccess: studentAccess || "OPEN",
 
-        
+
         // Use the logged-in teacher's ID.
         teacherId: teacher.id,
       },
@@ -153,6 +166,19 @@ export async function POST(request: Request) {
         {
           success: false,
           message: "Teacher access required.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "COLLEGE_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You must join a college before using teacher features.",
         },
         { status: 403 }
       );

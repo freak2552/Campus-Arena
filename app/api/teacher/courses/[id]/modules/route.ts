@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireTeacherWithCollege } from "@/lib/auth";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const teacher = await requireTeacherWithCollege();
+
     const { id } = await params;
 
     const courseId = Number(id);
@@ -17,6 +20,24 @@ export async function GET(
           message: "Invalid course ID",
         },
         { status: 400 }
+      );
+    }
+
+    // Make sure this course belongs to the logged-in teacher
+    const course = await prisma.course.findFirst({
+      where: {
+        id: courseId,
+        teacherId: teacher.id,
+      },
+    });
+
+    if (!course) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course not found",
+        },
+        { status: 404 }
       );
     }
 
@@ -43,6 +64,39 @@ export async function GET(
   } catch (error) {
     console.error("Get modules error:", error);
 
+    if (error instanceof Error) {
+      if (error.message === "COLLEGE_REQUIRED") {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "You must join a college before using teacher features.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (error.message === "UNAUTHENTICATED") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Authentication required.",
+          },
+          { status: 401 }
+        );
+      }
+
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Teacher access required.",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     return NextResponse.json(
       {
         success: false,
@@ -58,6 +112,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const teacher = await requireTeacherWithCollege();
+
     const { id } = await params;
 
     const courseId = Number(id);
@@ -72,6 +128,24 @@ export async function POST(
       );
     }
 
+    // Make sure this course belongs to the logged-in teacher
+    const course = await prisma.course.findFirst({
+      where: {
+        id: courseId,
+        teacherId: teacher.id,
+      },
+    });
+
+    if (!course) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Course not found",
+        },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
 
     const title = body.title?.trim();
@@ -83,22 +157,6 @@ export async function POST(
           message: "Module title is required",
         },
         { status: 400 }
-      );
-    }
-
-    const course = await prisma.course.findUnique({
-      where: {
-        id: courseId,
-      },
-    });
-
-    if (!course) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Course not found",
-        },
-        { status: 404 }
       );
     }
 
@@ -133,6 +191,39 @@ export async function POST(
     );
   } catch (error) {
     console.error("Create module error:", error);
+
+    if (error instanceof Error) {
+      if (error.message === "COLLEGE_REQUIRED") {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "You must join a college before using teacher features.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (error.message === "UNAUTHENTICATED") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Authentication required.",
+          },
+          { status: 401 }
+        );
+      }
+
+      if (error.message === "FORBIDDEN") {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Teacher access required.",
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     return NextResponse.json(
       {

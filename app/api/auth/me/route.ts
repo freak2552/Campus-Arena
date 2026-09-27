@@ -23,6 +23,7 @@ export async function GET() {
         fullName: user.fullName,
         email: user.email,
         role: user.role,
+        collegeId: user.collegeId,
       },
     });
   } catch (error) {

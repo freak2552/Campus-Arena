@@ -645,9 +645,9 @@ export default function TopicBuilderPage() {
 
       {/* MAIN */}
 
-      <main className="ml-64 pt-16">
+      <main>
 
-        <div className="min-h-screen p-8">
+        <div className="p-8">
 
           <div className="mx-auto max-w-5xl">
 
