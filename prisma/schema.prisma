@@ -7,6 +7,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ================================
+// USER SYSTEM
+// ================================
+
 model User {
   id           Int     @id @default(autoincrement())
   userId       String  @unique
@@ -19,8 +23,7 @@ model User {
   collegeId Int?
   college   College? @relation(fields: [collegeId], references: [id], onDelete: SetNull)
 
-  courses Course[]
-
+  courses  Course[]
   sessions Session[]
 
   createdAt DateTime @default(now())
@@ -38,6 +41,10 @@ model Session {
   createdAt DateTime @default(now())
 }
 
+// ================================
+// COLLEGE SYSTEM
+// ================================
+
 model College {
   id        Int    @id @default(autoincrement())
   collegeId String @unique
@@ -48,21 +55,70 @@ model College {
   phone   String?
   address String?
 
-  users User[]
+  users       User[]
+  departments Department[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Department {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  collegeId Int
+  college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  programmes Programme[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([collegeId, name])
+  @@index([collegeId])
+}
+
+model Programme {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  semesters Semester[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([departmentId, name])
+  @@index([departmentId])
+}
+
+model Semester {
+  id     Int @id @default(autoincrement())
+  number Int
+
+  programmeId Int
+  programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  courses Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([programmeId, number])
+  @@index([programmeId])
+}
+
+// ================================
+// ENUMS
+// ================================
 
 enum Role {
   STUDENT
   TEACHER
   ADMIN
 }
-
-// ================================
-// COURSE SYSTEM
-// ================================
 
 enum CourseStatus {
   DRAFT
@@ -93,15 +149,18 @@ enum ContentType {
   COMMON_MISTAKE
 }
 
+// ================================
+// COURSE
+// ================================
+
 model Course {
   id          Int     @id @default(autoincrement())
   title       String
   description String?
-  department  String?
-  category    String?
-  semester    String?
-  level       String?
-  credits     Int?
+
+  category String?
+  level    String?
+  credits  Int?
 
   coverUrl String?
 
@@ -109,17 +168,24 @@ model Course {
   visibility    CourseVisibility @default(COLLEGE)
   studentAccess StudentAccess    @default(OPEN)
 
+  semesterId Int
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
   teacherId Int
+  teacher   User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teacher User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-
   modules CourseModule[]
 
   @@index([teacherId])
+  @@index([semesterId])
 }
+
+// ================================
+// COURSE MODULE
+// ================================
 
 model CourseModule {
   id       Int    @id @default(autoincrement())
@@ -127,16 +193,19 @@ model CourseModule {
   position Int
 
   courseId Int
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   topics Topic[]
 
   @@index([courseId])
 }
+
+// ================================
+// TOPIC
+// ================================
 
 model Topic {
   id       Int    @id @default(autoincrement())
@@ -144,17 +213,20 @@ model Topic {
   position Int
 
   moduleId Int
+  module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  module CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   contentBlocks  ContentBlock[]
   knowledgeCheck KnowledgeCheck?
 
   @@index([moduleId])
 }
+
+// ================================
+// CONTENT BLOCK
+// ================================
 
 model ContentBlock {
   id       Int         @id @default(autoincrement())
@@ -165,27 +237,33 @@ model ContentBlock {
   url     String?
 
   topicId Int
+  topic   Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@index([topicId])
 }
 
+// ================================
+// KNOWLEDGE CHECK
+// ================================
+
 model KnowledgeCheck {
   id Int @id @default(autoincrement())
 
-  topicId Int @unique
+  topicId Int   @unique
+  topic   Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
   questions Question[]
 }
+
+// ================================
+// QUESTION
+// ================================
 
 model Question {
   id          Int     @id @default(autoincrement())
@@ -195,16 +273,19 @@ model Question {
   position Int
 
   knowledgeCheckId Int
+  knowledgeCheck   KnowledgeCheck @relation(fields: [knowledgeCheckId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  knowledgeCheck KnowledgeCheck @relation(fields: [knowledgeCheckId], references: [id], onDelete: Cascade)
 
   options QuestionOption[]
 
   @@index([knowledgeCheckId])
 }
+
+// ================================
+// QUESTION OPTION
+// ================================
 
 model QuestionOption {
   id        Int     @id @default(autoincrement())
@@ -214,8 +295,7 @@ model QuestionOption {
   position Int
 
   questionId Int
-
-  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
 }
