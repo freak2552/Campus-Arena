@@ -2,10 +2,22 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTeacherWithCollege } from "@/lib/auth";
 
+// ============================================================
+// GET — Get courses created by the logged-in teacher
+// ============================================================
+
 export async function GET() {
   try {
-    // Get the actual logged-in teacher
     const teacher = await requireTeacherWithCollege();
+    if (!teacher.collegeId) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
 
     const courses = await prisma.course.findMany({
       where: {
@@ -17,6 +29,36 @@ export async function GET() {
       },
 
       include: {
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        programmes: {
+          include: {
+            programme: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+
+        semesters: {
+          include: {
+            semester: {
+              select: {
+                id: true,
+                number: true,
+                programmeId: true,
+              },
+            },
+          },
+        },
+
         modules: {
           include: {
             topics: true,
@@ -63,7 +105,8 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: "You must join a college before using teacher features.",
+          message:
+            "You must join a college before using teacher features.",
         },
         { status: 403 }
       );
@@ -82,24 +125,40 @@ export async function GET() {
 }
 
 
+// ============================================================
+// POST — Create a new course
+// ============================================================
+
 export async function POST(request: Request) {
   try {
-    // Get the actual logged-in teacher
+    // --------------------------------------------------------
+    // 1. Get the logged-in teacher
+    // --------------------------------------------------------
+
     const teacher = await requireTeacherWithCollege();
+
+    // --------------------------------------------------------
+    // 2. Read request body
+    // --------------------------------------------------------
 
     const body = await request.json();
 
     const {
       title,
       description,
-      department,
+      departmentId,
+      programmeIds,
+      semesterIds,
       category,
-      semester,
       level,
       credits,
       visibility,
       studentAccess,
     } = body;
+
+    // --------------------------------------------------------
+    // 3. Basic validation
+    // --------------------------------------------------------
 
     if (!title?.trim()) {
       return NextResponse.json(
@@ -111,14 +170,180 @@ export async function POST(request: Request) {
       );
     }
 
+    const parsedDepartmentId = Number(departmentId);
+
+    if (
+      !departmentId ||
+      !Number.isInteger(parsedDepartmentId)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Valid departmentId is required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !Array.isArray(programmeIds) ||
+      programmeIds.length === 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "At least one programme must be selected.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !Array.isArray(semesterIds) ||
+      semesterIds.length === 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "At least one semester must be selected.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const parsedProgrammeIds = programmeIds.map(Number);
+    const parsedSemesterIds = semesterIds.map(Number);
+
+    // Make sure all IDs are valid integers.
+    if (
+      parsedProgrammeIds.some(
+        (id) => !Number.isInteger(id)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid programme IDs.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (
+      parsedSemesterIds.some(
+        (id) => !Number.isInteger(id)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid semester IDs.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------------
+    // 4. Verify department belongs to teacher's college
+    // --------------------------------------------------------
+
+    const department = await prisma.department.findFirst({
+      where: {
+        id: parsedDepartmentId,
+        collegeId: teacher.collegeId,
+      },
+    });
+
+    if (!department) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Department not found in your college.",
+        },
+        { status: 404 }
+      );
+    }
+
+    // --------------------------------------------------------
+    // 5. Verify programmes belong to selected department
+    // --------------------------------------------------------
+
+    const programmes = await prisma.programme.findMany({
+      where: {
+        id: {
+          in: parsedProgrammeIds,
+        },
+
+        departmentId: parsedDepartmentId,
+      },
+
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (programmes.length !== parsedProgrammeIds.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "One or more selected programmes do not belong to the selected department.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------------
+    // 6. Verify semesters belong to the selected programmes
+    // --------------------------------------------------------
+
+    const semesters = await prisma.semester.findMany({
+      where: {
+        id: {
+          in: parsedSemesterIds,
+        },
+
+        programmeId: {
+          in: parsedProgrammeIds,
+        },
+      },
+
+      select: {
+        id: true,
+        number: true,
+        programmeId: true,
+      },
+    });
+
+    if (semesters.length !== parsedSemesterIds.length) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "One or more selected semesters do not belong to the selected programmes.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------------
+    // 7. Create course + programme/semester relationships
+    // --------------------------------------------------------
+
     const course = await prisma.course.create({
       data: {
         title: title.trim(),
-        description: description?.trim() || null,
-        department: department?.trim() || null,
-        category: category?.trim() || null,
-        semester: semester?.trim() || null,
-        level: level?.trim() || null,
+
+        description:
+          description?.trim() || null,
+
+        category:
+          category?.trim() || null,
+
+        level:
+          level?.trim() || null,
 
         credits:
           credits !== undefined &&
@@ -127,14 +352,89 @@ export async function POST(request: Request) {
             ? Number(credits)
             : null,
 
-        visibility: visibility || "COLLEGE",
-        studentAccess: studentAccess || "OPEN",
+        visibility:
+          visibility || "COLLEGE",
 
+        studentAccess:
+          studentAccess || "OPEN",
 
-        // Use the logged-in teacher's ID.
-        teacherId: teacher.id,
+        // One department
+        department: {
+          connect: {
+            id: parsedDepartmentId,
+          },
+        },
+
+        // Multiple programmes
+        programmes: {
+          create: parsedProgrammeIds.map(
+            (programmeId: number) => ({
+              programme: {
+                connect: {
+                  id: programmeId,
+                },
+              },
+            })
+          ),
+        },
+
+        // Multiple semesters
+        semesters: {
+          create: parsedSemesterIds.map(
+            (semesterId: number) => ({
+              semester: {
+                connect: {
+                  id: semesterId,
+                },
+              },
+            })
+          ),
+        },
+
+        // Logged-in teacher
+        teacher: {
+          connect: {
+            id: teacher.id,
+          },
+        },
+      },
+
+      include: {
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+
+        programmes: {
+          include: {
+            programme: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+
+        semesters: {
+          include: {
+            semester: {
+              select: {
+                id: true,
+                number: true,
+                programmeId: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    // --------------------------------------------------------
+    // 8. Success
+    // --------------------------------------------------------
 
     return NextResponse.json(
       {
@@ -178,7 +478,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "You must join a college before using teacher features.",
+          message:
+            "You must join a college before using teacher features.",
         },
         { status: 403 }
       );

@@ -1,7 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+
+type Semester = {
+  id: number;
+  number: number;
+  programmeId: number;
+};
+
+type Programme = {
+  id: number;
+  name: string;
+  departmentId: number;
+  semesters: Semester[];
+};
+
+type Department = {
+  id: number;
+  name: string;
+  programmes: Programme[];
+};
+
+type Course = {
+  id: number;
+  title: string;
+  description: string | null;
+  category: string | null;
+  level: string | null;
+  credits: number | null;
+  coverUrl: string | null;
+  status: string;
+  visibility: string;
+  studentAccess: string;
+
+  department: {
+    id: number;
+    name: string;
+  };
+
+  programmes: {
+    programme: {
+      id: number;
+      name: string;
+      departmentId: number;
+    };
+  }[];
+
+  semesters: {
+    semester: {
+      id: number;
+      number: number;
+      programmeId: number;
+    };
+  }[];
+};
 
 export default function CourseSettingsPage() {
   const params = useParams();
@@ -11,13 +64,26 @@ export default function CourseSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [academicLoading, setAcademicLoading] =
+    useState(true);
+
+  const [departments, setDepartments] = useState<
+    Department[]
+  >([]);
+
+  const [departmentId, setDepartmentId] =
+    useState("");
+
+  const [selectedProgrammeIds, setSelectedProgrammeIds] =
+    useState<number[]>([]);
+
+  const [selectedSemesterIds, setSelectedSemesterIds] =
+    useState<number[]>([]);
 
   const [form, setForm] = useState({
     title: "",
     description: "",
-    department: "",
     category: "",
-    semester: "",
     level: "",
     credits: "",
     coverUrl: "",
@@ -26,9 +92,24 @@ export default function CourseSettingsPage() {
     studentAccess: "OPEN",
   });
 
+  // ============================================================
+  // LOAD COURSE + ACADEMIC STRUCTURE
+  // ============================================================
+
   useEffect(() => {
-    loadCourse();
+    const loadData = async () => {
+      await Promise.all([
+        loadCourse(),
+        loadAcademicStructure(),
+      ]);
+    };
+
+    loadData();
   }, []);
+
+  // ============================================================
+  // LOAD COURSE
+  // ============================================================
 
   const loadCourse = async () => {
     try {
@@ -44,14 +125,12 @@ export default function CourseSettingsPage() {
         );
       }
 
-      const course = data.course;
+      const course: Course = data.course;
 
       setForm({
         title: course.title || "",
         description: course.description || "",
-        department: course.department || "",
         category: course.category || "",
-        semester: course.semester || "",
         level: course.level || "",
         credits:
           course.credits !== null
@@ -64,8 +143,25 @@ export default function CourseSettingsPage() {
         studentAccess:
           course.studentAccess || "OPEN",
       });
+
+      setDepartmentId(
+        String(course.department.id)
+      );
+
+      setSelectedProgrammeIds(
+        course.programmes.map(
+          ({ programme }) => programme.id
+        )
+      );
+
+      setSelectedSemesterIds(
+        course.semesters.map(
+          ({ semester }) => semester.id
+        )
+      );
     } catch (error) {
       console.error(error);
+
       alert(
         error instanceof Error
           ? error.message
@@ -75,6 +171,78 @@ export default function CourseSettingsPage() {
       setLoading(false);
     }
   };
+
+  // ============================================================
+  // LOAD ACADEMIC STRUCTURE
+  // ============================================================
+
+  const loadAcademicStructure = async () => {
+    try {
+      const response = await fetch(
+        "/api/teacher/academic-structure"
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to load academic structure"
+        );
+      }
+
+      setDepartments(data.departments || []);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to load academic structure"
+      );
+    } finally {
+      setAcademicLoading(false);
+    }
+  };
+
+  // ============================================================
+  // SELECTED DEPARTMENT
+  // ============================================================
+
+  const selectedDepartment = useMemo(() => {
+    return departments.find(
+      (department) =>
+        department.id === Number(departmentId)
+    );
+  }, [departments, departmentId]);
+
+  const availableProgrammes =
+    selectedDepartment?.programmes || [];
+
+  // ============================================================
+  // AVAILABLE SEMESTERS
+  // ============================================================
+
+  const availableSemesters = useMemo(() => {
+    const semesters: Semester[] = [];
+
+    for (const programme of availableProgrammes) {
+      if (
+        selectedProgrammeIds.includes(programme.id)
+      ) {
+        semesters.push(...programme.semesters);
+      }
+    }
+
+    return semesters;
+  }, [
+    availableProgrammes,
+    selectedProgrammeIds,
+  ]);
+
+  // ============================================================
+  // FORM FIELD
+  // ============================================================
 
   const updateField = (
     field: string,
@@ -86,29 +254,140 @@ export default function CourseSettingsPage() {
     }));
   };
 
+  // ============================================================
+  // DEPARTMENT CHANGE
+  // ============================================================
+
+  const handleDepartmentChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const newDepartmentId = e.target.value;
+
+    setDepartmentId(newDepartmentId);
+
+    setSelectedProgrammeIds([]);
+    setSelectedSemesterIds([]);
+  };
+
+  // ============================================================
+  // PROGRAMME TOGGLE
+  // ============================================================
+
+  const handleProgrammeToggle = (
+    programmeId: number
+  ) => {
+    const isSelected =
+      selectedProgrammeIds.includes(programmeId);
+
+    if (isSelected) {
+      setSelectedProgrammeIds((previous) =>
+        previous.filter(
+          (id) => id !== programmeId
+        )
+      );
+
+      const programme =
+        availableProgrammes.find(
+          (item) => item.id === programmeId
+        );
+
+      if (programme) {
+        const semesterIds =
+          programme.semesters.map(
+            (semester) => semester.id
+          );
+
+        setSelectedSemesterIds((previous) =>
+          previous.filter(
+            (id) => !semesterIds.includes(id)
+          )
+        );
+      }
+
+      return;
+    }
+
+    setSelectedProgrammeIds((previous) => [
+      ...previous,
+      programmeId,
+    ]);
+  };
+
+  // ============================================================
+  // SEMESTER TOGGLE
+  // ============================================================
+
+  const handleSemesterToggle = (
+    semesterId: number
+  ) => {
+    setSelectedSemesterIds((previous) => {
+      if (previous.includes(semesterId)) {
+        return previous.filter(
+          (id) => id !== semesterId
+        );
+      }
+
+      return [...previous, semesterId];
+    });
+  };
+
+  // ============================================================
+  // SAVE
+  // ============================================================
+
   const saveChanges = async () => {
     setSaving(true);
 
     try {
+      if (!departmentId) {
+        throw new Error(
+          "Please select a department."
+        );
+      }
+
+      if (selectedProgrammeIds.length === 0) {
+        throw new Error(
+          "Please select at least one programme."
+        );
+      }
+
+      if (selectedSemesterIds.length === 0) {
+        throw new Error(
+          "Please select at least one semester."
+        );
+      }
+
       const response = await fetch(
         `/api/teacher/courses/${courseId}/settings`,
         {
           method: "PATCH",
+
           headers: {
             "Content-Type": "application/json",
           },
+
           body: JSON.stringify({
             title: form.title,
             description: form.description,
-            department: form.department,
+
+            departmentId: Number(
+              departmentId
+            ),
+
+            programmeIds:
+              selectedProgrammeIds,
+
+            semesterIds:
+              selectedSemesterIds,
+
             category: form.category,
-            semester: form.semester,
             level: form.level,
             credits: form.credits,
             coverUrl: form.coverUrl,
             status: form.status,
             visibility: form.visibility,
-            studentAccess: form.studentAccess,
+            studentAccess:
+              form.studentAccess,
           }),
         }
       );
@@ -117,11 +396,14 @@ export default function CourseSettingsPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to save settings"
+          data.message ||
+            "Failed to save settings"
         );
       }
 
-      alert("Course settings saved successfully.");
+      alert(
+        "Course settings saved successfully."
+      );
     } catch (error) {
       console.error(error);
 
@@ -134,6 +416,10 @@ export default function CourseSettingsPage() {
       setSaving(false);
     }
   };
+
+  // ============================================================
+  // DELETE COURSE
+  // ============================================================
 
   const deleteCourse = async () => {
     const confirmed = window.confirm(
@@ -154,7 +440,8 @@ export default function CourseSettingsPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to delete course"
+          data.message ||
+            "Failed to delete course"
         );
       }
 
@@ -172,10 +459,14 @@ export default function CourseSettingsPage() {
     }
   };
 
-  if (loading) {
+  // ============================================================
+  // LOADING
+  // ============================================================
+
+  if (loading || academicLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <main className="ml-64 pt-16">
+        <main>
           <div className="p-8">
             <p className="text-gray-600">
               Loading course settings...
@@ -185,6 +476,10 @@ export default function CourseSettingsPage() {
       </div>
     );
   }
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,14 +494,16 @@ export default function CourseSettingsPage() {
             </h1>
 
             <p className="mt-2 text-gray-600">
-              Manage the information and access settings
-              of your course.
+              Manage the information and access
+              settings of your course.
             </p>
           </div>
 
-          <div className="mt-8 mx-auto max-w-4xl space-y-6">
+          <div className="mx-auto mt-8 max-w-4xl space-y-6">
 
-            {/* Basic Information */}
+            {/* ==================================================
+                BASIC INFORMATION
+            ================================================== */}
 
             <div className="rounded-lg border bg-white p-6">
 
@@ -215,6 +512,8 @@ export default function CourseSettingsPage() {
               </h2>
 
               <div className="mt-6 space-y-5">
+
+                {/* Course Name */}
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">
@@ -234,6 +533,8 @@ export default function CourseSettingsPage() {
                   />
                 </div>
 
+                {/* Description */}
+
                 <div>
                   <label className="mb-2 block text-sm font-medium">
                     Short Description
@@ -252,6 +553,8 @@ export default function CourseSettingsPage() {
                   />
                 </div>
 
+                {/* Department + Category */}
+
                 <div className="grid grid-cols-2 gap-4">
 
                   <div>
@@ -259,17 +562,28 @@ export default function CourseSettingsPage() {
                       Department
                     </label>
 
-                    <input
-                      type="text"
-                      value={form.department}
-                      onChange={(e) =>
-                        updateField(
-                          "department",
-                          e.target.value
-                        )
+                    <select
+                      value={departmentId}
+                      onChange={
+                        handleDepartmentChange
                       }
-                      className="w-full rounded-md border px-4 py-3 outline-none"
-                    />
+                      className="w-full rounded-md border bg-white px-4 py-3 outline-none"
+                    >
+                      <option value="">
+                        Select department
+                      </option>
+
+                      {departments.map(
+                        (department) => (
+                          <option
+                            key={department.id}
+                            value={department.id}
+                          >
+                            {department.name}
+                          </option>
+                        )
+                      )}
+                    </select>
                   </div>
 
                   <div>
@@ -292,45 +606,203 @@ export default function CourseSettingsPage() {
 
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* ==================================================
+                    PROGRAMMES
+                ================================================== */}
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">
-                      Semester
-                    </label>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Programme
+                  </label>
 
-                    <input
-                      type="text"
-                      value={form.semester}
-                      onChange={(e) =>
-                        updateField(
-                          "semester",
-                          e.target.value
+                  {!departmentId ? (
+                    <div className="rounded-md border bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                      Select a department first.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 rounded-md border p-3">
+
+                      {availableProgrammes.length ===
+                      0 ? (
+                        <p className="text-sm text-gray-500">
+                          No programmes available.
+                        </p>
+                      ) : (
+                        availableProgrammes.map(
+                          (programme) => (
+                            <label
+                              key={programme.id}
+                              className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedProgrammeIds.includes(
+                                  programme.id
+                                )}
+                                onChange={() =>
+                                  handleProgrammeToggle(
+                                    programme.id
+                                  )
+                                }
+                                className="h-4 w-4"
+                              />
+
+                              <span className="text-sm">
+                                {programme.name}
+                              </span>
+                            </label>
+                          )
                         )
-                      }
-                      className="w-full rounded-md border px-4 py-3 outline-none"
-                    />
-                  </div>
+                      )}
 
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">
-                      Level
-                    </label>
+                    </div>
+                  )}
 
-                    <input
-                      type="text"
-                      value={form.level}
-                      onChange={(e) =>
-                        updateField(
-                          "level",
-                          e.target.value
-                        )
-                      }
-                      className="w-full rounded-md border px-4 py-3 outline-none"
-                    />
-                  </div>
-
+                  {selectedProgrammeIds.length >
+                    0 && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      {
+                        selectedProgrammeIds.length
+                      }{" "}
+                      programme
+                      {selectedProgrammeIds.length >
+                      1
+                        ? "s"
+                        : ""}{" "}
+                      selected
+                    </p>
+                  )}
                 </div>
+
+                {/* ==================================================
+                    SEMESTERS
+                ================================================== */}
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Semester
+                  </label>
+
+                  {selectedProgrammeIds.length ===
+                  0 ? (
+                    <div className="rounded-md border bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                      Select at least one
+                      programme first.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 rounded-md border p-3">
+
+                      {selectedProgrammeIds.map(
+                        (programmeId) => {
+                          const programme =
+                            availableProgrammes.find(
+                              (item) =>
+                                item.id ===
+                                programmeId
+                            );
+
+                          if (!programme) {
+                            return null;
+                          }
+
+                          return (
+                            <div
+                              key={programme.id}
+                            >
+                              <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {programme.name}
+                              </p>
+
+                              <div className="mt-1">
+
+                                {programme.semesters
+                                  .length ===
+                                0 ? (
+                                  <p className="px-3 py-2 text-sm text-gray-500">
+                                    No semesters
+                                    available.
+                                  </p>
+                                ) : (
+                                  programme.semesters.map(
+                                    (
+                                      semester
+                                    ) => (
+                                      <label
+                                        key={
+                                          semester.id
+                                        }
+                                        className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedSemesterIds.includes(
+                                            semester.id
+                                          )}
+                                          onChange={() =>
+                                            handleSemesterToggle(
+                                              semester.id
+                                            )
+                                          }
+                                          className="h-4 w-4"
+                                        />
+
+                                        <span className="text-sm">
+                                          Semester{" "}
+                                          {
+                                            semester.number
+                                          }
+                                        </span>
+                                      </label>
+                                    )
+                                  )
+                                )}
+
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+
+                    </div>
+                  )}
+
+                  {selectedSemesterIds.length >
+                    0 && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      {
+                        selectedSemesterIds.length
+                      }{" "}
+                      semester
+                      {selectedSemesterIds.length >
+                      1
+                        ? "s"
+                        : ""}{" "}
+                      selected
+                    </p>
+                  )}
+                </div>
+
+                {/* Level */}
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Level
+                  </label>
+
+                  <input
+                    type="text"
+                    value={form.level}
+                    onChange={(e) =>
+                      updateField(
+                        "level",
+                        e.target.value
+                      )
+                    }
+                    className="w-full rounded-md border px-4 py-3 outline-none"
+                  />
+                </div>
+
+                {/* Credits */}
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">
@@ -353,8 +825,9 @@ export default function CourseSettingsPage() {
               </div>
             </div>
 
-
-            {/* Course Cover */}
+            {/* ==================================================
+                COURSE COVER
+            ================================================== */}
 
             <div className="rounded-lg border bg-white p-6">
 
@@ -390,8 +863,9 @@ export default function CourseSettingsPage() {
               </div>
             </div>
 
-
-            {/* Status */}
+            {/* ==================================================
+                STATUS
+            ================================================== */}
 
             <div className="rounded-lg border bg-white p-6">
 
@@ -431,8 +905,9 @@ export default function CourseSettingsPage() {
               </div>
             </div>
 
-
-            {/* Access & Visibility */}
+            {/* ==================================================
+                ACCESS & VISIBILITY
+            ================================================== */}
 
             <div className="rounded-lg border bg-white p-6">
 
@@ -458,7 +933,6 @@ export default function CourseSettingsPage() {
                     }
                     className="w-full rounded-md border bg-white px-4 py-3"
                   >
-
                     <option value="PRIVATE">
                       Private
                     </option>
@@ -470,11 +944,9 @@ export default function CourseSettingsPage() {
                     <option value="PUBLIC">
                       Public
                     </option>
-
                   </select>
 
                 </div>
-
 
                 <div>
 
@@ -492,7 +964,6 @@ export default function CourseSettingsPage() {
                     }
                     className="w-full rounded-md border bg-white px-4 py-3"
                   >
-
                     <option value="OPEN">
                       Students can enroll
                     </option>
@@ -500,17 +971,16 @@ export default function CourseSettingsPage() {
                     <option value="APPROVAL_REQUIRED">
                       Teacher approval required
                     </option>
-
                   </select>
 
                 </div>
 
               </div>
-
             </div>
 
-
-            {/* Save */}
+            {/* ==================================================
+                SAVE
+            ================================================== */}
 
             <div className="flex justify-end">
 
@@ -527,8 +997,9 @@ export default function CourseSettingsPage() {
 
             </div>
 
-
-            {/* Danger Zone */}
+            {/* ==================================================
+                DANGER ZONE
+            ================================================== */}
 
             <div className="rounded-lg border border-red-200 bg-white p-6">
 

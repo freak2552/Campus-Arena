@@ -70,6 +70,7 @@ model Department {
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
 
   programmes Programme[]
+  courses    Course[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -87,6 +88,8 @@ model Programme {
 
   semesters Semester[]
 
+  courses CourseProgramme[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -101,7 +104,7 @@ model Semester {
   programmeId Int
   programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
 
-  courses Course[]
+  courses CourseSemester[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,8 +171,15 @@ model Course {
   visibility    CourseVisibility @default(COLLEGE)
   studentAccess StudentAccess    @default(OPEN)
 
-  semesterId Int
-  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  // One course belongs to one department
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  // One course can be assigned to multiple programmes
+  programmes CourseProgramme[]
+
+  // One course can be assigned to multiple semesters
+  semesters CourseSemester[]
 
   teacherId Int
   teacher   User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -180,6 +190,36 @@ model Course {
   modules CourseModule[]
 
   @@index([teacherId])
+  @@index([departmentId])
+}
+
+// ================================
+// COURSE ↔ PROGRAMME
+// ================================
+
+model CourseProgramme {
+  courseId    Int
+  programmeId Int
+
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  programme Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, programmeId])
+  @@index([programmeId])
+}
+
+// ================================
+// COURSE ↔ SEMESTER
+// ================================
+
+model CourseSemester {
+  courseId   Int
+  semesterId Int
+
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  semester Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, semesterId])
   @@index([semesterId])
 }
 
@@ -235,6 +275,9 @@ model ContentBlock {
 
   content String?
   url     String?
+
+  cloudinaryPublicId     String?
+  cloudinaryResourceType String?
 
   topicId Int
   topic   Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)

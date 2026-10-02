@@ -38,6 +38,22 @@ type KnowledgeCheck = {
   questions: Question[];
 };
 
+type UploadType = "VIDEO" | "PDF" | "IMAGE";
+
+type UploadPreparation = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+  publicId: string;
+  resourceType: "video" | "image";
+  uploadUrl: string;
+  maxSize: number;
+  maxSizeMB: number;
+  allowedFormats: readonly string[];
+};
+
 const contentTypes = [
   { value: "TEXT", label: "Text" },
   { value: "VIDEO", label: "Video" },
@@ -53,6 +69,7 @@ const contentTypes = [
 export default function TopicBuilderPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+
   const moduleId = searchParams.get("moduleId");
 
   const courseId = params.id;
@@ -63,24 +80,57 @@ export default function TopicBuilderPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // --------------------------------
+  // ADD CONTENT
+  // --------------------------------
+
   const [selectedType, setSelectedType] = useState("TEXT");
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
 
-  const [creating, setCreating] = useState(false);
+  const [selectedFile, setSelectedFile] =
+    useState<File | null>(null);
 
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // --------------------------------
+  // EDIT CONTENT
+  // --------------------------------
+
+  const [editingId, setEditingId] =
+    useState<number | null>(null);
+
   const [editType, setEditType] = useState("TEXT");
   const [editContent, setEditContent] = useState("");
   const [editUrl, setEditUrl] = useState("");
+
+  const [editFile, setEditFile] =
+    useState<File | null>(null);
+
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editingUpload, setEditingUpload] =
+    useState(false);
 
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  // --------------------------------
+  // DELETE
+  // --------------------------------
 
- 
-  const [knowledgeCheck, setKnowledgeCheck] = useState<KnowledgeCheck | null>(null);
-  const [questionText, setQuestionText] = useState("");
-  const [questionExplanation, setQuestionExplanation] = useState("");
+  const [deletingId, setDeletingId] =
+    useState<number | null>(null);
+
+  // --------------------------------
+  // KNOWLEDGE CHECK
+  // --------------------------------
+
+  const [knowledgeCheck, setKnowledgeCheck] =
+    useState<KnowledgeCheck | null>(null);
+
+  const [questionText, setQuestionText] =
+    useState("");
+
+  const [questionExplanation, setQuestionExplanation] =
+    useState("");
 
   const [options, setOptions] = useState([
     { text: "", isCorrect: true },
@@ -89,8 +139,8 @@ export default function TopicBuilderPage() {
     { text: "", isCorrect: false },
   ]);
 
-  const [creatingQuestion, setCreatingQuestion] = useState(false);
-
+  const [creatingQuestion, setCreatingQuestion] =
+    useState(false);
 
   // --------------------------------
   // LOAD TOPIC
@@ -125,7 +175,10 @@ export default function TopicBuilderPage() {
     }
   };
 
-  
+  // --------------------------------
+  // LOAD KNOWLEDGE CHECK
+  // --------------------------------
+
   const loadKnowledgeCheck = async () => {
     try {
       const response = await fetch(
@@ -136,7 +189,8 @@ export default function TopicBuilderPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to load knowledge check"
+          data.message ||
+            "Failed to load knowledge check"
         );
       }
 
@@ -154,17 +208,197 @@ export default function TopicBuilderPage() {
   }, [courseId, topicId, moduleId]);
 
   // --------------------------------
+  // CLOUDINARY UPLOAD
+  // --------------------------------
+
+  const uploadFileToCloudinary = async (
+    file: File,
+    type: UploadType
+  ) => {
+    /*
+     * STEP 1
+     * Ask our backend for a signed Cloudinary upload.
+     */
+
+    const prepareResponse = await fetch(
+      "/api/teacher/upload",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+        }),
+      }
+    );
+
+    const prepareData =
+      await prepareResponse.json();
+
+    if (!prepareResponse.ok) {
+      throw new Error(
+        prepareData.message ||
+          "Failed to prepare file upload"
+      );
+    }
+
+    const upload: UploadPreparation =
+      prepareData.upload;
+
+    /*
+     * STEP 2
+     * Check file size before sending it.
+     */
+
+    if (file.size > upload.maxSize) {
+      throw new Error(
+        `File is too large. Maximum allowed size is ${upload.maxSizeMB} MB.`
+      );
+    }
+
+    /*
+     * STEP 3
+     * Check file extension.
+     */
+
+    const fileName =
+      file.name.toLowerCase();
+
+    const extension =
+      fileName.includes(".")
+        ? fileName.split(".").pop()
+        : "";
+
+    if (
+      !extension ||
+      !upload.allowedFormats.includes(
+        extension
+      )
+    ) {
+      throw new Error(
+        `Invalid file format. Allowed formats: ${upload.allowedFormats.join(
+          ", "
+        )}.`
+      );
+    }
+
+    /*
+     * STEP 4
+     * Upload the actual file DIRECTLY to Cloudinary.
+     *
+     * The large file does NOT pass through our
+     * Next.js/Vercel API.
+     */
+
+    const cloudinaryFormData =
+      new FormData();
+
+    cloudinaryFormData.append(
+      "file",
+      file
+    );
+
+    cloudinaryFormData.append(
+      "api_key",
+      upload.apiKey
+    );
+
+    cloudinaryFormData.append(
+      "timestamp",
+      String(upload.timestamp)
+    );
+
+    cloudinaryFormData.append(
+      "signature",
+      upload.signature
+    );
+
+    cloudinaryFormData.append(
+      "folder",
+      upload.folder
+    );
+
+    cloudinaryFormData.append(
+      "public_id",
+      upload.publicId
+    );
+
+    const cloudinaryResponse =
+      await fetch(upload.uploadUrl, {
+        method: "POST",
+        body: cloudinaryFormData,
+      });
+
+    const cloudinaryData =
+      await cloudinaryResponse.json();
+
+    if (!cloudinaryResponse.ok) {
+      throw new Error(
+        cloudinaryData.error?.message ||
+          "Cloudinary upload failed"
+      );
+    }
+
+    /*
+     * STEP 5
+     * Return the important Cloudinary information.
+     */
+
+    return {
+      url: cloudinaryData.secure_url as string,
+      publicId:
+        cloudinaryData.public_id as string,
+      resourceType:
+        cloudinaryData.resource_type as string,
+      format:
+        cloudinaryData.format as string | undefined,
+    };
+  };
+
+  // --------------------------------
   // CREATE CONTENT BLOCK
   // --------------------------------
 
   const createContentBlock = async () => {
+    /*
+     * VIDEO / PDF / IMAGE require a file.
+     */
+
+    if (
+      selectedType === "VIDEO" ||
+      selectedType === "PDF" ||
+      selectedType === "IMAGE"
+    ) {
+      if (!selectedFile) {
+        setError(
+          selectedType === "VIDEO"
+            ? "Please select a video file."
+            : selectedType === "PDF"
+            ? "Please select a PDF file."
+            : "Please select an image file."
+        );
+
+        return;
+      }
+    }
+
+    /*
+     * Other content types need either content
+     * or a URL.
+     */
+
     if (
       selectedType !== "VIDEO" &&
-      selectedType !== "IMAGE" &&
       selectedType !== "PDF" &&
+      selectedType !== "IMAGE" &&
       !content.trim() &&
       !url.trim()
     ) {
+      setError(
+        "Please enter the required content."
+      );
+
       return;
     }
 
@@ -172,6 +406,42 @@ export default function TopicBuilderPage() {
     setError("");
 
     try {
+      let finalUrl =
+        url.trim() || null;
+
+      /*
+       * --------------------------------
+       * UPLOAD FILE
+       * --------------------------------
+       */
+
+      if (
+        selectedFile &&
+        (
+          selectedType === "VIDEO" ||
+          selectedType === "PDF" ||
+          selectedType === "IMAGE"
+        )
+      ) {
+        setUploading(true);
+
+        const uploadResult =
+          await uploadFileToCloudinary(
+            selectedFile,
+            selectedType as UploadType
+          );
+
+        finalUrl = uploadResult.url;
+
+        setUploading(false);
+      }
+
+      /*
+       * --------------------------------
+       * CREATE CONTENT BLOCK
+       * --------------------------------
+       */
+
       const response = await fetch(
         `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content`,
         {
@@ -182,7 +452,7 @@ export default function TopicBuilderPage() {
           body: JSON.stringify({
             type: selectedType,
             content: content || null,
-            url: url || null,
+            url: finalUrl,
           }),
         }
       );
@@ -191,24 +461,30 @@ export default function TopicBuilderPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to create content"
+          data.message ||
+            "Failed to create content"
         );
       }
 
       setTopic((previous) =>
         previous
           ? {
-            ...previous,
-            contentBlocks: [
-              ...previous.contentBlocks,
-              data.block,
-            ],
-          }
+              ...previous,
+              contentBlocks: [
+                ...previous.contentBlocks,
+                data.block,
+              ],
+            }
           : previous
       );
 
+      /*
+       * Reset form
+       */
+
       setContent("");
       setUrl("");
+      setSelectedFile(null);
     } catch (error) {
       setError(
         error instanceof Error
@@ -217,9 +493,13 @@ export default function TopicBuilderPage() {
       );
     } finally {
       setCreating(false);
+      setUploading(false);
     }
   };
 
+  // --------------------------------
+  // CREATE QUESTION
+  // --------------------------------
 
   const createQuestion = async () => {
     if (!questionText.trim()) {
@@ -236,12 +516,16 @@ export default function TopicBuilderPage() {
       return;
     }
 
-    const correctOptions = validOptions.filter(
-      (option) => option.isCorrect
-    );
+    const correctOptions =
+      validOptions.filter(
+        (option) => option.isCorrect
+      );
 
     if (correctOptions.length !== 1) {
-      alert("Select exactly one correct answer");
+      alert(
+        "Select exactly one correct answer"
+      );
+
       return;
     }
 
@@ -257,7 +541,8 @@ export default function TopicBuilderPage() {
           },
           body: JSON.stringify({
             question: questionText,
-            explanation: questionExplanation,
+            explanation:
+              questionExplanation,
             options: validOptions,
           }),
         }
@@ -267,12 +552,14 @@ export default function TopicBuilderPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to create question"
+          data.message ||
+            "Failed to create question"
         );
       }
 
       setKnowledgeCheck((previous) => ({
         id: data.question.knowledgeCheckId,
+
         questions: [
           ...(previous?.questions || []),
           data.question,
@@ -303,11 +590,16 @@ export default function TopicBuilderPage() {
   // START EDIT
   // --------------------------------
 
-  const startEdit = (block: ContentBlock) => {
+  const startEdit = (
+    block: ContentBlock
+  ) => {
     setEditingId(block.id);
     setEditType(block.type);
-    setEditContent(block.content || "");
+    setEditContent(
+      block.content || ""
+    );
     setEditUrl(block.url || "");
+    setEditFile(null);
     setError("");
   };
 
@@ -315,22 +607,60 @@ export default function TopicBuilderPage() {
   // SAVE EDIT
   // --------------------------------
 
-  const saveEdit = async (blockId: number) => {
+  const saveEdit = async (
+    blockId: number
+  ) => {
     setSavingEdit(true);
     setError("");
 
     try {
+      let finalUrl =
+        editUrl.trim() || null;
+
+      /*
+       * If teacher selected a new
+       * VIDEO / PDF / IMAGE file,
+       * upload it first.
+       */
+
+      if (
+        editFile &&
+        (
+          editType === "VIDEO" ||
+          editType === "PDF" ||
+          editType === "IMAGE"
+        )
+      ) {
+        setEditingUpload(true);
+
+        const uploadResult =
+          await uploadFileToCloudinary(
+            editFile,
+            editType as UploadType
+          );
+
+        finalUrl = uploadResult.url;
+
+        setEditingUpload(false);
+      }
+
+      /*
+       * Update ContentBlock
+       */
+
       const response = await fetch(
         `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content/${blockId}`,
         {
           method: "PATCH",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":
+              "application/json",
           },
           body: JSON.stringify({
             type: editType,
-            content: editContent || null,
-            url: editUrl || null,
+            content:
+              editContent || null,
+            url: finalUrl,
           }),
         }
       );
@@ -339,25 +669,28 @@ export default function TopicBuilderPage() {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to update content"
+          data.message ||
+            "Failed to update content"
         );
       }
 
       setTopic((previous) =>
         previous
           ? {
-            ...previous,
-            contentBlocks:
-              previous.contentBlocks.map((block) =>
-                block.id === blockId
-                  ? data.block
-                  : block
-              ),
-          }
+              ...previous,
+              contentBlocks:
+                previous.contentBlocks.map(
+                  (block) =>
+                    block.id === blockId
+                      ? data.block
+                      : block
+                ),
+            }
           : previous
       );
 
       setEditingId(null);
+      setEditFile(null);
     } catch (error) {
       setError(
         error instanceof Error
@@ -366,19 +699,21 @@ export default function TopicBuilderPage() {
       );
     } finally {
       setSavingEdit(false);
+      setEditingUpload(false);
     }
   };
 
   // --------------------------------
-  // DELETE
+  // DELETE CONTENT
   // --------------------------------
 
   const deleteContentBlock = async (
     blockId: number
   ) => {
-    const confirmed = window.confirm(
-      "Delete this content block?"
-    );
+    const confirmed =
+      window.confirm(
+        "Delete this content block?"
+      );
 
     if (!confirmed) return;
 
@@ -393,23 +728,26 @@ export default function TopicBuilderPage() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to delete content"
+          data.message ||
+            "Failed to delete content"
         );
       }
 
       setTopic((previous) =>
         previous
           ? {
-            ...previous,
-            contentBlocks:
-              previous.contentBlocks.filter(
-                (block) => block.id !== blockId
-              ),
-          }
+              ...previous,
+              contentBlocks:
+                previous.contentBlocks.filter(
+                  (block) =>
+                    block.id !== blockId
+                ),
+            }
           : previous
       );
     } catch (error) {
@@ -430,7 +768,10 @@ export default function TopicBuilderPage() {
   const renderContentForm = (
     editMode = false
   ) => {
-    const type = editMode ? editType : selectedType;
+    const type = editMode
+      ? editType
+      : selectedType;
+
     const setType = editMode
       ? setEditType
       : setSelectedType;
@@ -451,12 +792,35 @@ export default function TopicBuilderPage() {
       ? setEditUrl
       : setUrl;
 
+    const fileValue = editMode
+      ? editFile
+      : selectedFile;
+
+    const setFileValue = editMode
+      ? setEditFile
+      : setSelectedFile;
+
     return (
       <div className="space-y-4">
+        {/* CONTENT TYPE */}
 
         <select
           value={type}
-          onChange={(e) => setType(e.target.value)}
+          onChange={(e) => {
+            setType(e.target.value);
+
+            /*
+             * Clear selected file when
+             * changing content type.
+             */
+            if (
+              e.target.value !== "VIDEO" &&
+              e.target.value !== "PDF" &&
+              e.target.value !== "IMAGE"
+            ) {
+              setFileValue(null);
+            }
+          }}
           className="w-full rounded-md border px-4 py-3"
         >
           {contentTypes.map((item) => (
@@ -468,6 +832,8 @@ export default function TopicBuilderPage() {
             </option>
           ))}
         </select>
+
+        {/* TEXT */}
 
         {type === "TEXT" && (
           <textarea
@@ -481,24 +847,55 @@ export default function TopicBuilderPage() {
           />
         )}
 
+        {/* VIDEO */}
+
         {type === "VIDEO" && (
-          <>
+          <div className="space-y-3">
             <input
               type="file"
-              accept="video/*"
+              accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
+              onChange={(e) =>
+                setFileValue(
+                  e.target.files?.[0] ||
+                    null
+                )
+              }
               className="w-full rounded-md border px-4 py-3"
             />
 
-            <input
-              value={urlValue}
-              onChange={(e) =>
-                setUrlValue(e.target.value)
-              }
-              placeholder="Video URL / storage URL"
-              className="w-full rounded-md border px-4 py-3"
-            />
-          </>
+            {fileValue && (
+              <div className="rounded-md bg-gray-50 p-3 text-sm">
+                <p className="font-medium">
+                  Selected video
+                </p>
+
+                <p className="mt-1 break-all text-gray-600">
+                  {fileValue.name}
+                </p>
+
+                <p className="mt-1 text-gray-500">
+                  {(
+                    fileValue.size /
+                    (1024 * 1024)
+                  ).toFixed(2)}{" "}
+                  MB
+                </p>
+              </div>
+            )}
+
+            {editMode &&
+              !fileValue &&
+              urlValue && (
+                <p className="text-sm text-gray-500">
+                  Existing video will remain
+                  unless you select a new
+                  video.
+                </p>
+              )}
+          </div>
         )}
+
+        {/* YOUTUBE */}
 
         {type === "YOUTUBE" && (
           <input
@@ -511,43 +908,103 @@ export default function TopicBuilderPage() {
           />
         )}
 
+        {/* PDF */}
+
         {type === "PDF" && (
-          <>
+          <div className="space-y-3">
             <input
               type="file"
-              accept=".pdf"
+              accept="application/pdf,.pdf"
+              onChange={(e) =>
+                setFileValue(
+                  e.target.files?.[0] ||
+                    null
+                )
+              }
               className="w-full rounded-md border px-4 py-3"
             />
 
-            <input
-              value={urlValue}
-              onChange={(e) =>
-                setUrlValue(e.target.value)
-              }
-              placeholder="PDF URL / storage URL"
-              className="w-full rounded-md border px-4 py-3"
-            />
-          </>
+            {fileValue && (
+              <div className="rounded-md bg-gray-50 p-3 text-sm">
+                <p className="font-medium">
+                  Selected PDF
+                </p>
+
+                <p className="mt-1 break-all text-gray-600">
+                  {fileValue.name}
+                </p>
+
+                <p className="mt-1 text-gray-500">
+                  {(
+                    fileValue.size /
+                    (1024 * 1024)
+                  ).toFixed(2)}{" "}
+                  MB
+                </p>
+              </div>
+            )}
+
+            {editMode &&
+              !fileValue &&
+              urlValue && (
+                <p className="text-sm text-gray-500">
+                  Existing PDF will remain
+                  unless you select a new
+                  PDF.
+                </p>
+              )}
+          </div>
         )}
+
+        {/* IMAGE */}
 
         {type === "IMAGE" && (
-          <>
+          <div className="space-y-3">
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(e) =>
+                setFileValue(
+                  e.target.files?.[0] ||
+                    null
+                )
+              }
               className="w-full rounded-md border px-4 py-3"
             />
 
-            <input
-              value={urlValue}
-              onChange={(e) =>
-                setUrlValue(e.target.value)
-              }
-              placeholder="Image URL / storage URL"
-              className="w-full rounded-md border px-4 py-3"
-            />
-          </>
+            {fileValue && (
+              <div className="rounded-md bg-gray-50 p-3 text-sm">
+                <p className="font-medium">
+                  Selected image
+                </p>
+
+                <p className="mt-1 break-all text-gray-600">
+                  {fileValue.name}
+                </p>
+
+                <p className="mt-1 text-gray-500">
+                  {(
+                    fileValue.size /
+                    (1024 * 1024)
+                  ).toFixed(2)}{" "}
+                  MB
+                </p>
+              </div>
+            )}
+
+            {editMode &&
+              !fileValue &&
+              urlValue && (
+                <p className="text-sm text-gray-500">
+                  Existing image will remain
+                  unless you select a new
+                  image.
+                </p>
+              )}
+          </div>
         )}
+
+        {/* ARTICLE */}
 
         {type === "ARTICLE" && (
           <>
@@ -572,6 +1029,8 @@ export default function TopicBuilderPage() {
           </>
         )}
 
+        {/* FUN FACT */}
+
         {type === "FUN_FACT" && (
           <textarea
             value={textValue}
@@ -583,6 +1042,8 @@ export default function TopicBuilderPage() {
             className="w-full rounded-md border px-4 py-3"
           />
         )}
+
+        {/* GOOD TO KNOW */}
 
         {type === "GOOD_TO_KNOW" && (
           <textarea
@@ -596,6 +1057,8 @@ export default function TopicBuilderPage() {
           />
         )}
 
+        {/* COMMON MISTAKE */}
+
         {type === "COMMON_MISTAKE" && (
           <textarea
             value={textValue}
@@ -607,10 +1070,13 @@ export default function TopicBuilderPage() {
             className="w-full rounded-md border px-4 py-3"
           />
         )}
-
       </div>
     );
   };
+
+  // --------------------------------
+  // LOADING
+  // --------------------------------
 
   if (loading) {
     return (
@@ -619,6 +1085,10 @@ export default function TopicBuilderPage() {
       </div>
     );
   }
+
+  // --------------------------------
+  // TOPIC NOT FOUND
+  // --------------------------------
 
   if (!topic) {
     return (
@@ -630,31 +1100,19 @@ export default function TopicBuilderPage() {
     );
   }
 
+  // --------------------------------
+  // PAGE
+  // --------------------------------
+
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* HEADER */}
-
-      <header className="fixed left-0 top-0 z-40 h-16 w-full border-b bg-white">
-        <div className="flex h-full items-center px-6">
-          <h1 className="text-lg font-semibold">
-            Teacher Dashboard
-          </h1>
-        </div>
-      </header>
-
-      {/* MAIN */}
-
       <main>
-
         <div className="p-8">
-
           <div className="mx-auto max-w-5xl">
 
             {/* TOPIC HEADER */}
 
             <div className="flex items-center justify-between">
-
               <div>
                 <p className="text-sm text-gray-500">
                   Topic Builder
@@ -674,7 +1132,6 @@ export default function TopicBuilderPage() {
               >
                 Back
               </button>
-
             </div>
 
             {/* ERROR */}
@@ -688,7 +1145,6 @@ export default function TopicBuilderPage() {
             {/* ADD CONTENT */}
 
             <div className="mt-8 rounded-lg border bg-white p-6">
-
               <h2 className="text-lg font-semibold">
                 Add Content
               </h2>
@@ -700,83 +1156,95 @@ export default function TopicBuilderPage() {
               <button
                 type="button"
                 onClick={createContentBlock}
-                disabled={creating}
+                disabled={
+                  creating ||
+                  uploading
+                }
                 className="mt-5 rounded-md bg-black px-5 py-3 text-sm text-white disabled:opacity-50"
               >
-                {creating
+                {uploading
+                  ? "Uploading..."
+                  : creating
                   ? "Saving..."
                   : "Add Content"}
               </button>
-
             </div>
 
             {/* CONTENT BLOCKS */}
 
             <div className="mt-8 rounded-lg border bg-white p-6">
-
               <h2 className="text-lg font-semibold">
                 Topic Content
               </h2>
 
-              {topic.contentBlocks.length === 0 ? (
-
+              {topic.contentBlocks.length ===
+              0 ? (
                 <div className="mt-5 rounded-md border border-dashed p-8 text-center text-sm text-gray-500">
                   No content added yet.
                 </div>
-
               ) : (
-
                 <div className="mt-5 space-y-4">
-
                   {topic.contentBlocks.map(
                     (block, index) => (
-
                       <div
                         key={block.id}
                         className="rounded-md border p-5"
                       >
-
-                        {editingId === block.id ? (
-
+                        {editingId ===
+                        block.id ? (
                           <>
-                            {renderContentForm(true)}
+                            {renderContentForm(
+                              true
+                            )}
 
                             <div className="mt-4 flex gap-2">
-
                               <button
                                 type="button"
                                 onClick={() =>
-                                  saveEdit(block.id)
+                                  saveEdit(
+                                    block.id
+                                  )
                                 }
-                                disabled={savingEdit}
-                                className="rounded-md bg-black px-4 py-2 text-sm text-white"
+                                disabled={
+                                  savingEdit ||
+                                  editingUpload
+                                }
+                                className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
                               >
-                                {savingEdit
+                                {editingUpload
+                                  ? "Uploading..."
+                                  : savingEdit
                                   ? "Saving..."
                                   : "Save Changes"}
                               </button>
 
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setEditingId(null)
+                                onClick={() => {
+                                  setEditingId(
+                                    null
+                                  );
+                                  setEditFile(
+                                    null
+                                  );
+                                }}
+                                disabled={
+                                  savingEdit ||
+                                  editingUpload
                                 }
-                                className="rounded-md border px-4 py-2 text-sm"
+                                className="rounded-md border px-4 py-2 text-sm disabled:opacity-50"
                               >
                                 Cancel
                               </button>
-
                             </div>
                           </>
-
                         ) : (
-
                           <>
                             <div className="flex items-center justify-between">
-
                               <div>
                                 <p className="text-xs text-gray-500">
-                                  Content {index + 1}
+                                  Content{" "}
+                                  {index + 1}
                                 </p>
 
                                 <h3 className="mt-1 font-semibold">
@@ -790,11 +1258,12 @@ export default function TopicBuilderPage() {
                               </div>
 
                               <div className="flex gap-2">
-
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    startEdit(block)
+                                    startEdit(
+                                      block
+                                    )
                                   }
                                   className="rounded-md border px-3 py-2 text-sm"
                                 >
@@ -814,13 +1283,12 @@ export default function TopicBuilderPage() {
                                   }
                                   className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
                                 >
-                                  {deletingId === block.id
+                                  {deletingId ===
+                                  block.id
                                     ? "Deleting..."
                                     : "Delete"}
                                 </button>
-
                               </div>
-
                             </div>
 
                             {block.content && (
@@ -834,249 +1302,245 @@ export default function TopicBuilderPage() {
                                 {block.url}
                               </div>
                             )}
-
                           </>
-
                         )}
-
                       </div>
-
                     )
                   )}
+                </div>
+              )}
+            </div>
 
+            {/* KNOWLEDGE CHECK */}
+
+            <div className="mt-8 rounded-lg border bg-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    Knowledge Check
+                  </h2>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Create questions to check whether
+                    students understood this topic.
+                  </p>
+                </div>
+              </div>
+
+              {/* CREATE QUESTION */}
+
+              <div className="mt-6 rounded-md border bg-gray-50 p-5">
+                <h3 className="font-semibold">
+                  Add Question
+                </h3>
+
+                <textarea
+                  value={questionText}
+                  onChange={(e) =>
+                    setQuestionText(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Write your question..."
+                  rows={3}
+                  className="mt-4 w-full rounded-md border bg-white px-4 py-3"
+                />
+
+                <div className="mt-4 space-y-3">
+                  {options.map(
+                    (option, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-3"
+                      >
+                        <input
+                          type="radio"
+                          name="correct-answer"
+                          checked={
+                            option.isCorrect
+                          }
+                          onChange={() => {
+                            setOptions(
+                              (previous) =>
+                                previous.map(
+                                  (
+                                    item,
+                                    itemIndex
+                                  ) => ({
+                                    ...item,
+                                    isCorrect:
+                                      itemIndex ===
+                                      index,
+                                  })
+                                )
+                            );
+                          }}
+                        />
+
+                        <input
+                          value={option.text}
+                          onChange={(e) => {
+                            setOptions(
+                              (previous) =>
+                                previous.map(
+                                  (
+                                    item,
+                                    itemIndex
+                                  ) =>
+                                    itemIndex ===
+                                    index
+                                      ? {
+                                          ...item,
+                                          text: e
+                                            .target
+                                            .value,
+                                        }
+                                      : item
+                                )
+                            );
+                          }}
+                          placeholder={`Option ${String.fromCharCode(
+                            65 + index
+                          )}`}
+                          className="flex-1 rounded-md border bg-white px-4 py-3"
+                        />
+                      </div>
+                    )
+                  )}
                 </div>
 
-              )}
+                <textarea
+                  value={
+                    questionExplanation
+                  }
+                  onChange={(e) =>
+                    setQuestionExplanation(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Explanation shown after the student answers..."
+                  rows={3}
+                  className="mt-4 w-full rounded-md border bg-white px-4 py-3"
+                />
 
-            </div>
-
-          </div>
-
-          
-          <div className="mt-8 rounded-lg border bg-white p-6">
-
-            <div className="flex items-center justify-between">
-
-              <div>
-                <h2 className="text-lg font-semibold">
-                  Knowledge Check
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  Create questions to check whether students
-                  understood this topic.
-                </p>
+                <button
+                  type="button"
+                  onClick={createQuestion}
+                  disabled={
+                    creatingQuestion
+                  }
+                  className="mt-4 rounded-md bg-black px-5 py-3 text-sm text-white disabled:opacity-50"
+                >
+                  {creatingQuestion
+                    ? "Saving..."
+                    : "Add Question"}
+                </button>
               </div>
 
-            </div>
+              {/* EXISTING QUESTIONS */}
 
-            {/* CREATE QUESTION */}
+              <div className="mt-6 space-y-4">
+                {knowledgeCheck?.questions.map(
+                  (question, index) => (
+                    <div
+                      key={question.id}
+                      className="rounded-md border p-5"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500">
+                            Question{" "}
+                            {index + 1}
+                          </p>
 
-            <div className="mt-6 rounded-md border bg-gray-50 p-5">
+                          <h3 className="mt-1 font-semibold">
+                            {question.question}
+                          </h3>
+                        </div>
 
-              <h3 className="font-semibold">
-                Add Question
-              </h3>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const confirmed =
+                              window.confirm(
+                                "Delete this question?"
+                              );
 
-              <textarea
-                value={questionText}
-                onChange={(e) =>
-                  setQuestionText(e.target.value)
-                }
-                placeholder="Write your question..."
-                rows={3}
-                className="mt-4 w-full rounded-md border bg-white px-4 py-3"
-              />
+                            if (!confirmed)
+                              return;
 
-              <div className="mt-4 space-y-3">
-
-                {options.map((option, index) => (
-
-                  <div
-                    key={index}
-                    className="flex items-center gap-3"
-                  >
-
-                    <input
-                      type="radio"
-                      name="correct-answer"
-                      checked={option.isCorrect}
-                      onChange={() => {
-                        setOptions((previous) =>
-                          previous.map((item, itemIndex) => ({
-                            ...item,
-                            isCorrect:
-                              itemIndex === index,
-                          }))
-                        );
-                      }}
-                    />
-
-                    <input
-                      value={option.text}
-                      onChange={(e) => {
-                        setOptions((previous) =>
-                          previous.map((item, itemIndex) =>
-                            itemIndex === index
-                              ? {
-                                ...item,
-                                text: e.target.value,
+                            await fetch(
+                              `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/knowledge-check/questions/${question.id}`,
+                              {
+                                method:
+                                  "DELETE",
                               }
-                              : item
-                          )
-                        );
-                      }}
-                      placeholder={`Option ${String.fromCharCode(
-                        65 + index
-                      )}`}
-                      className="flex-1 rounded-md border bg-white px-4 py-3"
-                    />
-
-                  </div>
-
-                ))}
-
-              </div>
-
-              <textarea
-                value={questionExplanation}
-                onChange={(e) =>
-                  setQuestionExplanation(e.target.value)
-                }
-                placeholder="Explanation shown after the student answers..."
-                rows={3}
-                className="mt-4 w-full rounded-md border bg-white px-4 py-3"
-              />
-
-              <button
-                type="button"
-                onClick={createQuestion}
-                disabled={creatingQuestion}
-                className="mt-4 rounded-md bg-black px-5 py-3 text-sm text-white disabled:opacity-50"
-              >
-                {creatingQuestion
-                  ? "Saving..."
-                  : "Add Question"}
-              </button>
-
-            </div>
-
-            {/* EXISTING QUESTIONS */}
-
-            <div className="mt-6 space-y-4">
-
-              {knowledgeCheck?.questions.map(
-                (question, index) => (
-
-                  <div
-                    key={question.id}
-                    className="rounded-md border p-5"
-                  >
-
-                    <div className="flex items-start justify-between">
-
-                      <div>
-
-                        <p className="text-xs text-gray-500">
-                          Question {index + 1}
-                        </p>
-
-                        <h3 className="mt-1 font-semibold">
-                          {question.question}
-                        </h3>
-
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={async () => {
-
-                          const confirmed =
-                            window.confirm(
-                              "Delete this question?"
                             );
 
-                          if (!confirmed) return;
-
-                          await fetch(
-                            `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/knowledge-check/questions/${question.id}`,
-                            {
-                              method: "DELETE",
-                            }
-                          );
-
-                          setKnowledgeCheck(
-                            (previous) =>
-                              previous
-                                ? {
-                                  ...previous,
-                                  questions:
-                                    previous.questions.filter(
-                                      (item) =>
-                                        item.id !==
-                                        question.id
-                                    ),
-                                }
-                                : previous
-                          );
-                        }}
-                        className="rounded-md border px-3 py-2 text-sm"
-                      >
-                        Delete
-                      </button>
-
-                    </div>
-
-                    <div className="mt-4 space-y-2">
-
-                      {question.options.map(
-                        (option) => (
-
-                          <div
-                            key={option.id}
-                            className={`rounded-md border p-3 ${option.isCorrect
-                                ? "border-green-500 bg-green-50"
-                                : "bg-gray-50"
-                              }`}
-                          >
-
-                            <span>
-                              {option.text}
-                            </span>
-
-                            {option.isCorrect && (
-                              <span className="ml-2 text-xs font-semibold text-green-700">
-                                Correct Answer
-                              </span>
-                            )}
-
-                          </div>
-
-                        )
-                      )}
-
-                    </div>
-
-                    {question.explanation && (
-                      <div className="mt-4 rounded-md bg-blue-50 p-4 text-sm">
-                        <strong>Explanation:</strong>{" "}
-                        {question.explanation}
+                            setKnowledgeCheck(
+                              (previous) =>
+                                previous
+                                  ? {
+                                      ...previous,
+                                      questions:
+                                        previous.questions.filter(
+                                          (
+                                            item
+                                          ) =>
+                                            item.id !==
+                                            question.id
+                                        ),
+                                    }
+                                  : previous
+                            );
+                          }}
+                          className="rounded-md border px-3 py-2 text-sm"
+                        >
+                          Delete
+                        </button>
                       </div>
-                    )}
 
-                  </div>
+                      <div className="mt-4 space-y-2">
+                        {question.options.map(
+                          (option) => (
+                            <div
+                              key={option.id}
+                              className={`rounded-md border p-3 ${
+                                option.isCorrect
+                                  ? "border-green-500 bg-green-50"
+                                  : "bg-gray-50"
+                              }`}
+                            >
+                              <span>
+                                {option.text}
+                              </span>
 
-                )
-              )}
+                              {option.isCorrect && (
+                                <span className="ml-2 text-xs font-semibold text-green-700">
+                                  Correct Answer
+                                </span>
+                              )}
+                            </div>
+                          )
+                        )}
+                      </div>
 
+                      {question.explanation && (
+                        <div className="mt-4 rounded-md bg-blue-50 p-4 text-sm">
+                          <strong>
+                            Explanation:
+                          </strong>{" "}
+                          {question.explanation}
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
-
           </div>
-
         </div>
-
       </main>
-
     </div>
   );
 }
