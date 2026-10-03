@@ -70,6 +70,47 @@ export async function POST(
       "COMMON_MISTAKE",
     ];
 
+    if (type === "YOUTUBE") {
+      const url = body.url?.trim();
+
+      if (!url) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "YouTube URL is required",
+          },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const parsedUrl = new URL(url);
+
+        const isYouTube =
+          parsedUrl.hostname === "youtube.com" ||
+          parsedUrl.hostname === "www.youtube.com" ||
+          parsedUrl.hostname === "youtu.be";
+
+        if (!isYouTube) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "Please provide a valid YouTube URL",
+            },
+            { status: 400 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Invalid YouTube URL",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!validTypes.includes(type)) {
       return NextResponse.json(
         {
@@ -99,6 +140,13 @@ export async function POST(
         position,
         content: body.content ?? null,
         url: body.url ?? null,
+
+        cloudinaryPublicId:
+          body.cloudinaryPublicId ?? null,
+
+        cloudinaryResourceType:
+          body.cloudinaryResourceType ?? null,
+
         topicId: topicIdNumber,
       },
     });

@@ -187,7 +187,7 @@ export default function CourseSettingsPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to load academic structure"
+          "Failed to load academic structure"
         );
       }
 
@@ -332,6 +332,35 @@ export default function CourseSettingsPage() {
   };
 
   // ============================================================
+  // UPDATE COURSE STATUS
+  // ============================================================
+
+  const updateCourseStatus = async (status: string) => {
+    const response = await fetch(
+      `/api/teacher/courses/${courseId}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to update course status"
+      );
+    }
+
+    return data;
+  };
+
+  // ============================================================
   // SAVE
   // ============================================================
 
@@ -384,7 +413,6 @@ export default function CourseSettingsPage() {
             level: form.level,
             credits: form.credits,
             coverUrl: form.coverUrl,
-            status: form.status,
             visibility: form.visibility,
             studentAccess:
               form.studentAccess,
@@ -397,8 +425,13 @@ export default function CourseSettingsPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to save settings"
+          "Failed to save settings"
         );
+      }
+
+      // Update course status separately
+      if (form.status) {
+        await updateCourseStatus(form.status);
       }
 
       alert(
@@ -441,7 +474,7 @@ export default function CourseSettingsPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to delete course"
+          "Failed to delete course"
         );
       }
 
@@ -623,7 +656,7 @@ export default function CourseSettingsPage() {
                     <div className="space-y-2 rounded-md border p-3">
 
                       {availableProgrammes.length ===
-                      0 ? (
+                        0 ? (
                         <p className="text-sm text-gray-500">
                           No programmes available.
                         </p>
@@ -660,18 +693,18 @@ export default function CourseSettingsPage() {
 
                   {selectedProgrammeIds.length >
                     0 && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      {
-                        selectedProgrammeIds.length
-                      }{" "}
-                      programme
-                      {selectedProgrammeIds.length >
-                      1
-                        ? "s"
-                        : ""}{" "}
-                      selected
-                    </p>
-                  )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        {
+                          selectedProgrammeIds.length
+                        }{" "}
+                        programme
+                        {selectedProgrammeIds.length >
+                          1
+                          ? "s"
+                          : ""}{" "}
+                        selected
+                      </p>
+                    )}
                 </div>
 
                 {/* ==================================================
@@ -684,7 +717,7 @@ export default function CourseSettingsPage() {
                   </label>
 
                   {selectedProgrammeIds.length ===
-                  0 ? (
+                    0 ? (
                     <div className="rounded-md border bg-gray-50 px-4 py-3 text-sm text-gray-500">
                       Select at least one
                       programme first.
@@ -717,7 +750,7 @@ export default function CourseSettingsPage() {
 
                                 {programme.semesters
                                   .length ===
-                                0 ? (
+                                  0 ? (
                                   <p className="px-3 py-2 text-sm text-gray-500">
                                     No semesters
                                     available.
@@ -768,18 +801,18 @@ export default function CourseSettingsPage() {
 
                   {selectedSemesterIds.length >
                     0 && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      {
-                        selectedSemesterIds.length
-                      }{" "}
-                      semester
-                      {selectedSemesterIds.length >
-                      1
-                        ? "s"
-                        : ""}{" "}
-                      selected
-                    </p>
-                  )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        {
+                          selectedSemesterIds.length
+                        }{" "}
+                        semester
+                        {selectedSemesterIds.length >
+                          1
+                          ? "s"
+                          : ""}{" "}
+                        selected
+                      </p>
+                    )}
                 </div>
 
                 {/* Level */}

@@ -430,6 +430,43 @@ export default function CourseBuilderPage() {
     }
   };
 
+  // PUBLISH COURSE
+
+  const publishCourse = async () => {
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/teacher/courses/${courseId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: "PUBLISHED",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to publish course"
+        );
+      }
+
+      alert("Course published successfully.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to publish course"
+      );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -452,6 +489,7 @@ export default function CourseBuilderPage() {
 
               <button
                 type="button"
+                onClick={publishCourse}
                 className="rounded-md bg-black px-5 py-3 text-sm text-white"
               >
                 Publish Course

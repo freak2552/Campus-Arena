@@ -9,6 +9,8 @@ type ContentBlock = {
   position: number;
   content: string | null;
   url: string | null;
+  cloudinaryPublicId: string | null;
+  cloudinaryResourceType: string | null;
 };
 
 type Topic = {
@@ -38,22 +40,6 @@ type KnowledgeCheck = {
   questions: Question[];
 };
 
-type UploadType = "VIDEO" | "PDF" | "IMAGE";
-
-type UploadPreparation = {
-  cloudName: string;
-  apiKey: string;
-  timestamp: number;
-  signature: string;
-  folder: string;
-  publicId: string;
-  resourceType: "video" | "image";
-  uploadUrl: string;
-  maxSize: number;
-  maxSizeMB: number;
-  allowedFormats: readonly string[];
-};
-
 const contentTypes = [
   { value: "TEXT", label: "Text" },
   { value: "VIDEO", label: "Video" },
@@ -81,18 +67,30 @@ export default function TopicBuilderPage() {
   const [error, setError] = useState("");
 
   // --------------------------------
-  // ADD CONTENT
+  // CREATE CONTENT
   // --------------------------------
 
-  const [selectedType, setSelectedType] = useState("TEXT");
+  const [selectedType, setSelectedType] =
+    useState("TEXT");
+
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
 
-  const [selectedFile, setSelectedFile] =
-    useState<File | null>(null);
+  const [
+    cloudinaryPublicId,
+    setCloudinaryPublicId,
+  ] = useState<string | null>(null);
 
-  const [creating, setCreating] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [
+    cloudinaryResourceType,
+    setCloudinaryResourceType,
+  ] = useState<string | null>(null);
+
+  const [uploadingFile, setUploadingFile] =
+    useState(false);
+
+  const [creating, setCreating] =
+    useState(false);
 
   // --------------------------------
   // EDIT CONTENT
@@ -101,15 +99,16 @@ export default function TopicBuilderPage() {
   const [editingId, setEditingId] =
     useState<number | null>(null);
 
-  const [editType, setEditType] = useState("TEXT");
-  const [editContent, setEditContent] = useState("");
-  const [editUrl, setEditUrl] = useState("");
+  const [editType, setEditType] =
+    useState("TEXT");
 
-  const [editFile, setEditFile] =
-    useState<File | null>(null);
+  const [editContent, setEditContent] =
+    useState("");
 
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [editingUpload, setEditingUpload] =
+  const [editUrl, setEditUrl] =
+    useState("");
+
+  const [savingEdit, setSavingEdit] =
     useState(false);
 
   // --------------------------------
@@ -175,10 +174,6 @@ export default function TopicBuilderPage() {
     }
   };
 
-  // --------------------------------
-  // LOAD KNOWLEDGE CHECK
-  // --------------------------------
-
   const loadKnowledgeCheck = async () => {
     try {
       const response = await fetch(
@@ -190,7 +185,7 @@ export default function TopicBuilderPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to load knowledge check"
+          "Failed to load knowledge check"
         );
       }
 
@@ -208,242 +203,19 @@ export default function TopicBuilderPage() {
   }, [courseId, topicId, moduleId]);
 
   // --------------------------------
-  // CLOUDINARY UPLOAD
+  // UPLOAD FILE TO CLOUDINARY
   // --------------------------------
 
-  const uploadFileToCloudinary = async (
-    file: File,
-    type: UploadType
-  ) => {
-    /*
-     * STEP 1
-     * Ask our backend for a signed Cloudinary upload.
-     */
-
-    const prepareResponse = await fetch(
-      "/api/teacher/upload",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type,
-        }),
-      }
-    );
-
-    const prepareData =
-      await prepareResponse.json();
-
-    if (!prepareResponse.ok) {
-      throw new Error(
-        prepareData.message ||
-          "Failed to prepare file upload"
-      );
-    }
-
-    const upload: UploadPreparation =
-      prepareData.upload;
-
-    /*
-     * STEP 2
-     * Check file size before sending it.
-     */
-
-    if (file.size > upload.maxSize) {
-      throw new Error(
-        `File is too large. Maximum allowed size is ${upload.maxSizeMB} MB.`
-      );
-    }
-
-    /*
-     * STEP 3
-     * Check file extension.
-     */
-
-    const fileName =
-      file.name.toLowerCase();
-
-    const extension =
-      fileName.includes(".")
-        ? fileName.split(".").pop()
-        : "";
-
-    if (
-      !extension ||
-      !upload.allowedFormats.includes(
-        extension
-      )
-    ) {
-      throw new Error(
-        `Invalid file format. Allowed formats: ${upload.allowedFormats.join(
-          ", "
-        )}.`
-      );
-    }
-
-    /*
-     * STEP 4
-     * Upload the actual file DIRECTLY to Cloudinary.
-     *
-     * The large file does NOT pass through our
-     * Next.js/Vercel API.
-     */
-
-    const cloudinaryFormData =
-      new FormData();
-
-    cloudinaryFormData.append(
-      "file",
-      file
-    );
-
-    cloudinaryFormData.append(
-      "api_key",
-      upload.apiKey
-    );
-
-    cloudinaryFormData.append(
-      "timestamp",
-      String(upload.timestamp)
-    );
-
-    cloudinaryFormData.append(
-      "signature",
-      upload.signature
-    );
-
-    cloudinaryFormData.append(
-      "folder",
-      upload.folder
-    );
-
-    cloudinaryFormData.append(
-      "public_id",
-      upload.publicId
-    );
-
-    const cloudinaryResponse =
-      await fetch(upload.uploadUrl, {
-        method: "POST",
-        body: cloudinaryFormData,
-      });
-
-    const cloudinaryData =
-      await cloudinaryResponse.json();
-
-    if (!cloudinaryResponse.ok) {
-      throw new Error(
-        cloudinaryData.error?.message ||
-          "Cloudinary upload failed"
-      );
-    }
-
-    /*
-     * STEP 5
-     * Return the important Cloudinary information.
-     */
-
-    return {
-      url: cloudinaryData.secure_url as string,
-      publicId:
-        cloudinaryData.public_id as string,
-      resourceType:
-        cloudinaryData.resource_type as string,
-      format:
-        cloudinaryData.format as string | undefined,
-    };
-  };
-
-  // --------------------------------
-  // CREATE CONTENT BLOCK
-  // --------------------------------
-
-  const createContentBlock = async () => {
-    /*
-     * VIDEO / PDF / IMAGE require a file.
-     */
-
-    if (
-      selectedType === "VIDEO" ||
-      selectedType === "PDF" ||
-      selectedType === "IMAGE"
-    ) {
-      if (!selectedFile) {
-        setError(
-          selectedType === "VIDEO"
-            ? "Please select a video file."
-            : selectedType === "PDF"
-            ? "Please select a PDF file."
-            : "Please select an image file."
-        );
-
-        return;
-      }
-    }
-
-    /*
-     * Other content types need either content
-     * or a URL.
-     */
-
-    if (
-      selectedType !== "VIDEO" &&
-      selectedType !== "PDF" &&
-      selectedType !== "IMAGE" &&
-      !content.trim() &&
-      !url.trim()
-    ) {
-      setError(
-        "Please enter the required content."
-      );
-
-      return;
-    }
-
-    setCreating(true);
+  const uploadFile = async (file: File) => {
+    setUploadingFile(true);
     setError("");
 
     try {
-      let finalUrl =
-        url.trim() || null;
-
       /*
-       * --------------------------------
-       * UPLOAD FILE
-       * --------------------------------
+       * Ask our backend for a signed upload.
        */
-
-      if (
-        selectedFile &&
-        (
-          selectedType === "VIDEO" ||
-          selectedType === "PDF" ||
-          selectedType === "IMAGE"
-        )
-      ) {
-        setUploading(true);
-
-        const uploadResult =
-          await uploadFileToCloudinary(
-            selectedFile,
-            selectedType as UploadType
-          );
-
-        finalUrl = uploadResult.url;
-
-        setUploading(false);
-      }
-
-      /*
-       * --------------------------------
-       * CREATE CONTENT BLOCK
-       * --------------------------------
-       */
-
-      const response = await fetch(
-        `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content`,
+      const prepareResponse = await fetch(
+        "/api/teacher/upload",
         {
           method: "POST",
           headers: {
@@ -451,140 +223,362 @@ export default function TopicBuilderPage() {
           },
           body: JSON.stringify({
             type: selectedType,
-            content: content || null,
-            url: finalUrl,
           }),
         }
       );
 
-      const data = await response.json();
+      const prepareData =
+        await prepareResponse.json();
 
-      if (!response.ok) {
+      if (!prepareResponse.ok) {
         throw new Error(
-          data.message ||
-            "Failed to create content"
+          prepareData.message ||
+          "Failed to prepare upload"
         );
       }
 
-      setTopic((previous) =>
-        previous
-          ? {
+      const upload =
+        prepareData.upload;
+
+      /*
+       * Basic file-size validation on frontend.
+       *
+       * Backend configuration remains the
+       * authoritative validation.
+       */
+      if (
+        upload.maxSize &&
+        file.size > upload.maxSize
+      ) {
+        throw new Error(
+          `File is too large. Maximum allowed size is ${upload.maxSizeMB} MB.`
+        );
+      }
+
+      /*
+       * Check file extension.
+       */
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase();
+
+      if (
+        extension &&
+        Array.isArray(upload.allowedFormats) &&
+        !upload.allowedFormats.includes(
+          extension
+        )
+      ) {
+        throw new Error(
+          `Invalid file format. Allowed formats: ${upload.allowedFormats.join(
+            ", "
+          )}`
+        );
+      }
+
+      /*
+       * Upload DIRECTLY to Cloudinary.
+       *
+       * The actual file does not go through
+       * our Next.js server.
+       */
+      const cloudinaryForm =
+        new FormData();
+
+      cloudinaryForm.append(
+        "file",
+        file
+      );
+
+      cloudinaryForm.append(
+        "api_key",
+        upload.apiKey
+      );
+
+      cloudinaryForm.append(
+        "timestamp",
+        String(upload.timestamp)
+      );
+
+      cloudinaryForm.append(
+        "signature",
+        upload.signature
+      );
+
+      cloudinaryForm.append(
+        "folder",
+        upload.folder
+      );
+
+      cloudinaryForm.append(
+        "public_id",
+        upload.publicId
+      );
+
+      const cloudinaryResponse =
+        await fetch(
+          upload.uploadUrl,
+          {
+            method: "POST",
+            body: cloudinaryForm,
+          }
+        );
+
+      const cloudinaryData =
+        await cloudinaryResponse.json();
+
+      if (!cloudinaryResponse.ok) {
+        throw new Error(
+          cloudinaryData.error?.message ||
+          "Cloudinary upload failed"
+        );
+      }
+
+      /*
+       * Save Cloudinary information locally.
+       */
+      setUrl(
+        cloudinaryData.secure_url
+      );
+
+      setCloudinaryPublicId(
+        cloudinaryData.public_id ||
+        upload.publicId
+      );
+
+      setCloudinaryResourceType(
+        cloudinaryData.resource_type ||
+        upload.resourceType
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "File upload failed"
+      );
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  // --------------------------------
+  // CREATE CONTENT BLOCK
+  // --------------------------------
+
+  const createContentBlock =
+    async () => {
+      if (
+        selectedType === "YOUTUBE" &&
+        !url.trim()
+      ) {
+        setError("Please enter a YouTube URL.");
+        return;
+      }
+
+      if (
+        selectedType !== "VIDEO" &&
+        selectedType !== "IMAGE" &&
+        selectedType !== "PDF" &&
+        !content.trim() &&
+        !url.trim()
+      ) {
+        return;
+      }
+
+      /*
+       * File content must finish uploading
+       * before creating the database record.
+       */
+      if (uploadingFile) {
+        setError(
+          "Please wait for the file upload to finish."
+        );
+        return;
+      }
+
+      setCreating(true);
+      setError("");
+
+      try {
+        const response = await fetch(
+          `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              type: selectedType,
+
+              content:
+                content || null,
+
+              url:
+                url || null,
+
+              cloudinaryPublicId,
+
+              cloudinaryResourceType,
+            }),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Failed to create content"
+          );
+        }
+
+        setTopic((previous) =>
+          previous
+            ? {
               ...previous,
               contentBlocks: [
                 ...previous.contentBlocks,
                 data.block,
               ],
             }
-          : previous
-      );
+            : previous
+        );
+      
+        setContent("");
+        setUrl("");
 
-      /*
-       * Reset form
-       */
+        setCloudinaryPublicId(
+          null
+        );
 
-      setContent("");
-      setUrl("");
-      setSelectedFile(null);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong"
-      );
-    } finally {
-      setCreating(false);
-      setUploading(false);
-    }
-  };
+        setCloudinaryResourceType(
+          null
+        );
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong"
+        );
+      } finally {
+        setCreating(false);
+      }
+    };
 
   // --------------------------------
   // CREATE QUESTION
   // --------------------------------
 
-  const createQuestion = async () => {
-    if (!questionText.trim()) {
-      alert("Enter a question");
-      return;
-    }
-
-    const validOptions = options.filter(
-      (option) => option.text.trim()
-    );
-
-    if (validOptions.length < 2) {
-      alert("Add at least 2 options");
-      return;
-    }
-
-    const correctOptions =
-      validOptions.filter(
-        (option) => option.isCorrect
-      );
-
-    if (correctOptions.length !== 1) {
-      alert(
-        "Select exactly one correct answer"
-      );
-
-      return;
-    }
-
-    setCreatingQuestion(true);
-
-    try {
-      const response = await fetch(
-        `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/knowledge-check/questions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            question: questionText,
-            explanation:
-              questionExplanation,
-            options: validOptions,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to create question"
-        );
+  const createQuestion =
+    async () => {
+      if (!questionText.trim()) {
+        alert("Enter a question");
+        return;
       }
 
-      setKnowledgeCheck((previous) => ({
-        id: data.question.knowledgeCheckId,
+      const validOptions =
+        options.filter(
+          (option) =>
+            option.text.trim()
+        );
 
-        questions: [
-          ...(previous?.questions || []),
-          data.question,
-        ],
-      }));
+      if (validOptions.length < 2) {
+        alert("Add at least 2 options");
+        return;
+      }
 
-      setQuestionText("");
-      setQuestionExplanation("");
+      const correctOptions =
+        validOptions.filter(
+          (option) =>
+            option.isCorrect
+        );
 
-      setOptions([
-        { text: "", isCorrect: true },
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
-        { text: "", isCorrect: false },
-      ]);
-    } catch (error) {
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to create question"
-      );
-    } finally {
-      setCreatingQuestion(false);
-    }
-  };
+      if (correctOptions.length !== 1) {
+        alert(
+          "Select exactly one correct answer"
+        );
+        return;
+      }
+
+      setCreatingQuestion(true);
+
+      try {
+        const response = await fetch(
+          `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/knowledge-check/questions`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              question: questionText,
+              explanation:
+                questionExplanation,
+              options: validOptions,
+            }),
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Failed to create question"
+          );
+        }
+
+        setKnowledgeCheck(
+          (previous) => ({
+            id:
+              data.question
+                .knowledgeCheckId,
+
+            questions: [
+              ...(previous?.questions ||
+                []),
+              data.question,
+            ],
+          })
+        );
+
+        setQuestionText("");
+        setQuestionExplanation("");
+
+        setOptions([
+          {
+            text: "",
+            isCorrect: true,
+          },
+          {
+            text: "",
+            isCorrect: false,
+          },
+          {
+            text: "",
+            isCorrect: false,
+          },
+          {
+            text: "",
+            isCorrect: false,
+          },
+        ]);
+      } catch (error) {
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Failed to create question"
+        );
+      } finally {
+        setCreatingQuestion(false);
+      }
+    };
 
   // --------------------------------
   // START EDIT
@@ -594,12 +588,17 @@ export default function TopicBuilderPage() {
     block: ContentBlock
   ) => {
     setEditingId(block.id);
+
     setEditType(block.type);
+
     setEditContent(
       block.content || ""
     );
-    setEditUrl(block.url || "");
-    setEditFile(null);
+
+    setEditUrl(
+      block.url || ""
+    );
+
     setError("");
   };
 
@@ -614,40 +613,6 @@ export default function TopicBuilderPage() {
     setError("");
 
     try {
-      let finalUrl =
-        editUrl.trim() || null;
-
-      /*
-       * If teacher selected a new
-       * VIDEO / PDF / IMAGE file,
-       * upload it first.
-       */
-
-      if (
-        editFile &&
-        (
-          editType === "VIDEO" ||
-          editType === "PDF" ||
-          editType === "IMAGE"
-        )
-      ) {
-        setEditingUpload(true);
-
-        const uploadResult =
-          await uploadFileToCloudinary(
-            editFile,
-            editType as UploadType
-          );
-
-        finalUrl = uploadResult.url;
-
-        setEditingUpload(false);
-      }
-
-      /*
-       * Update ContentBlock
-       */
-
       const response = await fetch(
         `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content/${blockId}`,
         {
@@ -660,71 +625,9 @@ export default function TopicBuilderPage() {
             type: editType,
             content:
               editContent || null,
-            url: finalUrl,
+            url:
+              editUrl || null,
           }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            "Failed to update content"
-        );
-      }
-
-      setTopic((previous) =>
-        previous
-          ? {
-              ...previous,
-              contentBlocks:
-                previous.contentBlocks.map(
-                  (block) =>
-                    block.id === blockId
-                      ? data.block
-                      : block
-                ),
-            }
-          : previous
-      );
-
-      setEditingId(null);
-      setEditFile(null);
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong"
-      );
-    } finally {
-      setSavingEdit(false);
-      setEditingUpload(false);
-    }
-  };
-
-  // --------------------------------
-  // DELETE CONTENT
-  // --------------------------------
-
-  const deleteContentBlock = async (
-    blockId: number
-  ) => {
-    const confirmed =
-      window.confirm(
-        "Delete this content block?"
-      );
-
-    if (!confirmed) return;
-
-    setDeletingId(blockId);
-    setError("");
-
-    try {
-      const response = await fetch(
-        `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content/${blockId}`,
-        {
-          method: "DELETE",
         }
       );
 
@@ -734,22 +637,26 @@ export default function TopicBuilderPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "Failed to delete content"
+          "Failed to update content"
         );
       }
 
       setTopic((previous) =>
         previous
           ? {
-              ...previous,
-              contentBlocks:
-                previous.contentBlocks.filter(
-                  (block) =>
-                    block.id !== blockId
-                ),
-            }
+            ...previous,
+            contentBlocks:
+              previous.contentBlocks.map(
+                (block) =>
+                  block.id === blockId
+                    ? data.block
+                    : block
+              ),
+          }
           : previous
       );
+
+      setEditingId(null);
     } catch (error) {
       setError(
         error instanceof Error
@@ -757,9 +664,70 @@ export default function TopicBuilderPage() {
           : "Something went wrong"
       );
     } finally {
-      setDeletingId(null);
+      setSavingEdit(false);
     }
   };
+
+  // --------------------------------
+  // DELETE
+  // --------------------------------
+
+  const deleteContentBlock =
+    async (
+      blockId: number
+    ) => {
+      const confirmed =
+        window.confirm(
+          "Delete this content block?"
+        );
+
+      if (!confirmed) return;
+
+      setDeletingId(blockId);
+      setError("");
+
+      try {
+        const response =
+          await fetch(
+            `/api/teacher/courses/${courseId}/modules/${moduleId}/topics/${topicId}/content/${blockId}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            "Failed to delete content"
+          );
+        }
+
+        setTopic((previous) =>
+          previous
+            ? {
+              ...previous,
+              contentBlocks:
+                previous.contentBlocks.filter(
+                  (block) =>
+                    block.id !==
+                    blockId
+                ),
+            }
+            : previous
+        );
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong"
+        );
+      } finally {
+        setDeletingId(null);
+      }
+    };
 
   // --------------------------------
   // CONTENT FORM
@@ -792,54 +760,36 @@ export default function TopicBuilderPage() {
       ? setEditUrl
       : setUrl;
 
-    const fileValue = editMode
-      ? editFile
-      : selectedFile;
-
-    const setFileValue = editMode
-      ? setEditFile
-      : setSelectedFile;
-
     return (
       <div className="space-y-4">
-        {/* CONTENT TYPE */}
-
         <select
           value={type}
-          onChange={(e) => {
-            setType(e.target.value);
-
-            /*
-             * Clear selected file when
-             * changing content type.
-             */
-            if (
-              e.target.value !== "VIDEO" &&
-              e.target.value !== "PDF" &&
-              e.target.value !== "IMAGE"
-            ) {
-              setFileValue(null);
-            }
-          }}
+          onChange={(e) =>
+            setType(
+              e.target.value
+            )
+          }
           className="w-full rounded-md border px-4 py-3"
         >
-          {contentTypes.map((item) => (
-            <option
-              key={item.value}
-              value={item.value}
-            >
-              {item.label}
-            </option>
-          ))}
+          {contentTypes.map(
+            (item) => (
+              <option
+                key={item.value}
+                value={item.value}
+              >
+                {item.label}
+              </option>
+            )
+          )}
         </select>
-
-        {/* TEXT */}
 
         {type === "TEXT" && (
           <textarea
             value={textValue}
             onChange={(e) =>
-              setTextValue(e.target.value)
+              setTextValue(
+                e.target.value
+              )
             }
             placeholder="Write your content..."
             rows={6}
@@ -847,171 +797,117 @@ export default function TopicBuilderPage() {
           />
         )}
 
-        {/* VIDEO */}
-
         {type === "VIDEO" && (
-          <div className="space-y-3">
-            <input
-              type="file"
-              accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
-              onChange={(e) =>
-                setFileValue(
-                  e.target.files?.[0] ||
-                    null
-                )
-              }
-              className="w-full rounded-md border px-4 py-3"
-            />
+          <>
+            {!editMode && (
+              <input
+                type="file"
+                accept="video/*"
+                disabled={
+                  uploadingFile
+                }
+                onChange={(e) => {
+                  const file =
+                    e.target.files?.[0];
 
-            {fileValue && (
-              <div className="rounded-md bg-gray-50 p-3 text-sm">
-                <p className="font-medium">
-                  Selected video
-                </p>
-
-                <p className="mt-1 break-all text-gray-600">
-                  {fileValue.name}
-                </p>
-
-                <p className="mt-1 text-gray-500">
-                  {(
-                    fileValue.size /
-                    (1024 * 1024)
-                  ).toFixed(2)}{" "}
-                  MB
-                </p>
-              </div>
+                  if (file) {
+                    uploadFile(file);
+                  }
+                }}
+                className="w-full rounded-md border px-4 py-3"
+              />
             )}
 
-            {editMode &&
-              !fileValue &&
-              urlValue && (
+            {uploadingFile &&
+              !editMode && (
                 <p className="text-sm text-gray-500">
-                  Existing video will remain
-                  unless you select a new
-                  video.
+                  Uploading video...
                 </p>
               )}
-          </div>
+          </>
         )}
-
-        {/* YOUTUBE */}
 
         {type === "YOUTUBE" && (
           <input
             value={urlValue}
             onChange={(e) =>
-              setUrlValue(e.target.value)
+              setUrlValue(
+                e.target.value
+              )
             }
             placeholder="YouTube video URL"
             className="w-full rounded-md border px-4 py-3"
           />
         )}
 
-        {/* PDF */}
-
         {type === "PDF" && (
-          <div className="space-y-3">
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={(e) =>
-                setFileValue(
-                  e.target.files?.[0] ||
-                    null
-                )
-              }
-              className="w-full rounded-md border px-4 py-3"
-            />
+          <>
+            {!editMode && (
+              <input
+                type="file"
+                accept=".pdf"
+                disabled={
+                  uploadingFile
+                }
+                onChange={(e) => {
+                  const file =
+                    e.target.files?.[0];
 
-            {fileValue && (
-              <div className="rounded-md bg-gray-50 p-3 text-sm">
-                <p className="font-medium">
-                  Selected PDF
-                </p>
-
-                <p className="mt-1 break-all text-gray-600">
-                  {fileValue.name}
-                </p>
-
-                <p className="mt-1 text-gray-500">
-                  {(
-                    fileValue.size /
-                    (1024 * 1024)
-                  ).toFixed(2)}{" "}
-                  MB
-                </p>
-              </div>
+                  if (file) {
+                    uploadFile(file);
+                  }
+                }}
+                className="w-full rounded-md border px-4 py-3"
+              />
             )}
 
-            {editMode &&
-              !fileValue &&
-              urlValue && (
+            {uploadingFile &&
+              !editMode && (
                 <p className="text-sm text-gray-500">
-                  Existing PDF will remain
-                  unless you select a new
-                  PDF.
+                  Uploading PDF...
                 </p>
               )}
-          </div>
+          </>
         )}
-
-        {/* IMAGE */}
 
         {type === "IMAGE" && (
-          <div className="space-y-3">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={(e) =>
-                setFileValue(
-                  e.target.files?.[0] ||
-                    null
-                )
-              }
-              className="w-full rounded-md border px-4 py-3"
-            />
+          <>
+            {!editMode && (
+              <input
+                type="file"
+                accept="image/*"
+                disabled={
+                  uploadingFile
+                }
+                onChange={(e) => {
+                  const file =
+                    e.target.files?.[0];
 
-            {fileValue && (
-              <div className="rounded-md bg-gray-50 p-3 text-sm">
-                <p className="font-medium">
-                  Selected image
-                </p>
-
-                <p className="mt-1 break-all text-gray-600">
-                  {fileValue.name}
-                </p>
-
-                <p className="mt-1 text-gray-500">
-                  {(
-                    fileValue.size /
-                    (1024 * 1024)
-                  ).toFixed(2)}{" "}
-                  MB
-                </p>
-              </div>
+                  if (file) {
+                    uploadFile(file);
+                  }
+                }}
+                className="w-full rounded-md border px-4 py-3"
+              />
             )}
 
-            {editMode &&
-              !fileValue &&
-              urlValue && (
+            {uploadingFile &&
+              !editMode && (
                 <p className="text-sm text-gray-500">
-                  Existing image will remain
-                  unless you select a new
-                  image.
+                  Uploading image...
                 </p>
               )}
-          </div>
+          </>
         )}
-
-        {/* ARTICLE */}
 
         {type === "ARTICLE" && (
           <>
             <input
               value={urlValue}
               onChange={(e) =>
-                setUrlValue(e.target.value)
+                setUrlValue(
+                  e.target.value
+                )
               }
               placeholder="Article URL"
               className="w-full rounded-md border px-4 py-3"
@@ -1020,7 +916,9 @@ export default function TopicBuilderPage() {
             <textarea
               value={textValue}
               onChange={(e) =>
-                setTextValue(e.target.value)
+                setTextValue(
+                  e.target.value
+                )
               }
               placeholder="Article description..."
               rows={4}
@@ -1029,13 +927,13 @@ export default function TopicBuilderPage() {
           </>
         )}
 
-        {/* FUN FACT */}
-
         {type === "FUN_FACT" && (
           <textarea
             value={textValue}
             onChange={(e) =>
-              setTextValue(e.target.value)
+              setTextValue(
+                e.target.value
+              )
             }
             placeholder="Enter fun fact..."
             rows={4}
@@ -1043,13 +941,13 @@ export default function TopicBuilderPage() {
           />
         )}
 
-        {/* GOOD TO KNOW */}
-
         {type === "GOOD_TO_KNOW" && (
           <textarea
             value={textValue}
             onChange={(e) =>
-              setTextValue(e.target.value)
+              setTextValue(
+                e.target.value
+              )
             }
             placeholder="Enter important information..."
             rows={4}
@@ -1057,13 +955,13 @@ export default function TopicBuilderPage() {
           />
         )}
 
-        {/* COMMON MISTAKE */}
-
         {type === "COMMON_MISTAKE" && (
           <textarea
             value={textValue}
             onChange={(e) =>
-              setTextValue(e.target.value)
+              setTextValue(
+                e.target.value
+              )
             }
             placeholder="Explain the common mistake..."
             rows={4}
@@ -1085,10 +983,6 @@ export default function TopicBuilderPage() {
       </div>
     );
   }
-
-  // --------------------------------
-  // TOPIC NOT FOUND
-  // --------------------------------
 
   if (!topic) {
     return (
@@ -1155,18 +1049,20 @@ export default function TopicBuilderPage() {
 
               <button
                 type="button"
-                onClick={createContentBlock}
+                onClick={
+                  createContentBlock
+                }
                 disabled={
                   creating ||
-                  uploading
+                  uploadingFile
                 }
                 className="mt-5 rounded-md bg-black px-5 py-3 text-sm text-white disabled:opacity-50"
               >
-                {uploading
+                {uploadingFile
                   ? "Uploading..."
                   : creating
-                  ? "Saving..."
-                  : "Add Content"}
+                    ? "Saving..."
+                    : "Add Content"}
               </button>
             </div>
 
@@ -1178,20 +1074,23 @@ export default function TopicBuilderPage() {
               </h2>
 
               {topic.contentBlocks.length ===
-              0 ? (
+                0 ? (
                 <div className="mt-5 rounded-md border border-dashed p-8 text-center text-sm text-gray-500">
                   No content added yet.
                 </div>
               ) : (
                 <div className="mt-5 space-y-4">
                   {topic.contentBlocks.map(
-                    (block, index) => (
+                    (
+                      block,
+                      index
+                    ) => (
                       <div
                         key={block.id}
                         className="rounded-md border p-5"
                       >
                         {editingId ===
-                        block.id ? (
+                          block.id ? (
                           <>
                             {renderContentForm(
                               true
@@ -1206,33 +1105,23 @@ export default function TopicBuilderPage() {
                                   )
                                 }
                                 disabled={
-                                  savingEdit ||
-                                  editingUpload
+                                  savingEdit
                                 }
-                                className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+                                className="rounded-md bg-black px-4 py-2 text-sm text-white"
                               >
-                                {editingUpload
-                                  ? "Uploading..."
-                                  : savingEdit
+                                {savingEdit
                                   ? "Saving..."
                                   : "Save Changes"}
                               </button>
 
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={() =>
                                   setEditingId(
                                     null
-                                  );
-                                  setEditFile(
-                                    null
-                                  );
-                                }}
-                                disabled={
-                                  savingEdit ||
-                                  editingUpload
+                                  )
                                 }
-                                className="rounded-md border px-4 py-2 text-sm disabled:opacity-50"
+                                className="rounded-md border px-4 py-2 text-sm"
                               >
                                 Cancel
                               </button>
@@ -1244,16 +1133,22 @@ export default function TopicBuilderPage() {
                               <div>
                                 <p className="text-xs text-gray-500">
                                   Content{" "}
-                                  {index + 1}
+                                  {index +
+                                    1}
                                 </p>
 
                                 <h3 className="mt-1 font-semibold">
-                                  {contentTypes.find(
-                                    (item) =>
-                                      item.value ===
-                                      block.type
-                                  )?.label ||
-                                    block.type}
+                                  {
+                                    contentTypes.find(
+                                      (
+                                        item
+                                      ) =>
+                                        item.value ===
+                                        block.type
+                                    )
+                                      ?.label ||
+                                    block.type
+                                  }
                                 </h3>
                               </div>
 
@@ -1284,7 +1179,7 @@ export default function TopicBuilderPage() {
                                   className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
                                 >
                                   {deletingId ===
-                                  block.id
+                                    block.id
                                     ? "Deleting..."
                                     : "Delete"}
                                 </button>
@@ -1293,7 +1188,9 @@ export default function TopicBuilderPage() {
 
                             {block.content && (
                               <div className="mt-4 whitespace-pre-wrap rounded-md bg-gray-50 p-4 text-sm">
-                                {block.content}
+                                {
+                                  block.content
+                                }
                               </div>
                             )}
 
@@ -1321,8 +1218,8 @@ export default function TopicBuilderPage() {
                   </h2>
 
                   <p className="mt-1 text-sm text-gray-500">
-                    Create questions to check whether
-                    students understood this topic.
+                    Create questions to check whether students
+                    understood this topic.
                   </p>
                 </div>
               </div>
@@ -1348,7 +1245,10 @@ export default function TopicBuilderPage() {
 
                 <div className="mt-4 space-y-3">
                   {options.map(
-                    (option, index) => (
+                    (
+                      option,
+                      index
+                    ) => (
                       <div
                         key={index}
                         className="flex items-center gap-3"
@@ -1361,7 +1261,9 @@ export default function TopicBuilderPage() {
                           }
                           onChange={() => {
                             setOptions(
-                              (previous) =>
+                              (
+                                previous
+                              ) =>
                                 previous.map(
                                   (
                                     item,
@@ -1378,23 +1280,27 @@ export default function TopicBuilderPage() {
                         />
 
                         <input
-                          value={option.text}
+                          value={
+                            option.text
+                          }
                           onChange={(e) => {
                             setOptions(
-                              (previous) =>
+                              (
+                                previous
+                              ) =>
                                 previous.map(
                                   (
                                     item,
                                     itemIndex
                                   ) =>
                                     itemIndex ===
-                                    index
+                                      index
                                       ? {
-                                          ...item,
-                                          text: e
-                                            .target
-                                            .value,
-                                        }
+                                        ...item,
+                                        text: e
+                                          .target
+                                          .value,
+                                      }
                                       : item
                                 )
                             );
@@ -1425,7 +1331,9 @@ export default function TopicBuilderPage() {
 
                 <button
                   type="button"
-                  onClick={createQuestion}
+                  onClick={
+                    createQuestion
+                  }
                   disabled={
                     creatingQuestion
                   }
@@ -1441,7 +1349,10 @@ export default function TopicBuilderPage() {
 
               <div className="mt-6 space-y-4">
                 {knowledgeCheck?.questions.map(
-                  (question, index) => (
+                  (
+                    question,
+                    index
+                  ) => (
                     <div
                       key={question.id}
                       className="rounded-md border p-5"
@@ -1454,7 +1365,9 @@ export default function TopicBuilderPage() {
                           </p>
 
                           <h3 className="mt-1 font-semibold">
-                            {question.question}
+                            {
+                              question.question
+                            }
                           </h3>
                         </div>
 
@@ -1466,7 +1379,9 @@ export default function TopicBuilderPage() {
                                 "Delete this question?"
                               );
 
-                            if (!confirmed)
+                            if (
+                              !confirmed
+                            )
                               return;
 
                             await fetch(
@@ -1478,19 +1393,21 @@ export default function TopicBuilderPage() {
                             );
 
                             setKnowledgeCheck(
-                              (previous) =>
+                              (
+                                previous
+                              ) =>
                                 previous
                                   ? {
-                                      ...previous,
-                                      questions:
-                                        previous.questions.filter(
-                                          (
-                                            item
-                                          ) =>
-                                            item.id !==
-                                            question.id
-                                        ),
-                                    }
+                                    ...previous,
+                                    questions:
+                                      previous.questions.filter(
+                                        (
+                                          item
+                                        ) =>
+                                          item.id !==
+                                          question.id
+                                      ),
+                                  }
                                   : previous
                             );
                           }}
@@ -1502,17 +1419,22 @@ export default function TopicBuilderPage() {
 
                       <div className="mt-4 space-y-2">
                         {question.options.map(
-                          (option) => (
+                          (
+                            option
+                          ) => (
                             <div
-                              key={option.id}
-                              className={`rounded-md border p-3 ${
-                                option.isCorrect
+                              key={
+                                option.id
+                              }
+                              className={`rounded-md border p-3 ${option.isCorrect
                                   ? "border-green-500 bg-green-50"
                                   : "bg-gray-50"
-                              }`}
+                                }`}
                             >
                               <span>
-                                {option.text}
+                                {
+                                  option.text
+                                }
                               </span>
 
                               {option.isCorrect && (
@@ -1530,7 +1452,9 @@ export default function TopicBuilderPage() {
                           <strong>
                             Explanation:
                           </strong>{" "}
-                          {question.explanation}
+                          {
+                            question.explanation
+                          }
                         </div>
                       )}
                     </div>

@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
-import StudentHome from "./StudentHome";
 
-export default async function StudentPage() {
+export default async function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   try {
-    const user = await requireRole(["STUDENT"]);
+    await requireRole(["STUDENT"]);
 
-    return <StudentHome user={user} />;
+    return <>{children}</>;
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "UNAUTHENTICATED") {

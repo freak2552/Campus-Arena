@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import cloudinary from "@/lib/cloudinary";
 
 type Params = {
   params: Promise<{
@@ -21,6 +22,78 @@ const validTypes = [
   "GOOD_TO_KNOW",
   "COMMON_MISTAKE",
 ];
+
+/*
+|--------------------------------------------------------------------------
+| Cloudinary helpers
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Deletes a Cloudinary asset safely.
+ *
+ * Cloudinary resource types used by Campus Arena:
+ *
+ * VIDEO → video
+ * IMAGE → image
+ * PDF   → image
+ */
+async function deleteCloudinaryAsset(
+  publicId: string | null,
+  resourceType: string | null
+) {
+  if (!publicId) {
+    return;
+  }
+
+  const resource =
+    resourceType === "video"
+      ? "video"
+      : "image";
+
+  const result =
+    await cloudinary.uploader.destroy(
+      publicId,
+      {
+        resource_type: resource,
+        invalidate: true,
+      }
+    );
+
+  /*
+   * "not found" is okay.
+   *
+   * It means the file is already gone from
+   * Cloudinary, so there is nothing left
+   * for us to delete.
+   */
+  if (
+    result.result !== "ok" &&
+    result.result !== "not found"
+  ) {
+    throw new Error(
+      `Cloudinary deletion failed: ${result.result}`
+    );
+  }
+
+  return result;
+}
+
+/*
+|--------------------------------------------------------------------------
+| PATCH
+|--------------------------------------------------------------------------
+| Updates a ContentBlock.
+|
+| If a new Cloudinary asset replaces an old one:
+|
+| 1. Update PostgreSQL
+| 2. Delete the old Cloudinary asset
+|
+| This prevents the old file from remaining
+| unnecessarily in Cloudinary.
+|--------------------------------------------------------------------------
+*/
 
 export async function PATCH(
   request: Request,
@@ -56,6 +129,9 @@ export async function PATCH(
 
     const body = await request.json();
 
+    /*
+     * Validate content type.
+     */
     if (
       body.type !== undefined &&
       !validTypes.includes(body.type)
@@ -69,18 +145,23 @@ export async function PATCH(
       );
     }
 
-    const block = await prisma.contentBlock.findFirst({
-      where: {
-        id: blockIdNumber,
-        topicId: topicIdNumber,
-        topic: {
-          moduleId: moduleIdNumber,
-          module: {
-            courseId,
+    /*
+     * Find the ContentBlock and make sure
+     * it actually belongs to this course/module/topic.
+     */
+    const block =
+      await prisma.contentBlock.findFirst({
+        where: {
+          id: blockIdNumber,
+          topicId: topicIdNumber,
+          topic: {
+            moduleId: moduleIdNumber,
+            module: {
+              courseId,
+            },
           },
         },
-      },
-    });
+      });
 
     if (!block) {
       return NextResponse.json(
@@ -92,43 +173,157 @@ export async function PATCH(
       );
     }
 
+    /*
+     * Keep the old Cloudinary information
+     * before changing the database record.
+     */
+    const oldCloudinaryPublicId =
+      block.cloudinaryPublicId;
+
+    const oldCloudinaryResourceType =
+      block.cloudinaryResourceType;
+
+    /*
+     * Determine whether the request is
+     * providing a new Cloudinary asset.
+     *
+     * The frontend will send these values
+     * after we make the small Topic Builder
+     * change.
+     */
+    const newCloudinaryPublicId =
+      body.cloudinaryPublicId !== undefined
+        ? body.cloudinaryPublicId
+        : undefined;
+
+    const newCloudinaryResourceType =
+      body.cloudinaryResourceType !== undefined
+        ? body.cloudinaryResourceType
+        : undefined;
+
+    /*
+     * Build update data.
+     */
+    const updateData: {
+      type?: string;
+      content?: string | null;
+      url?: string | null;
+      cloudinaryPublicId?: string | null;
+      cloudinaryResourceType?: string | null;
+    } = {};
+
+    if (body.type !== undefined) {
+      updateData.type = body.type;
+    }
+
+    if (body.content !== undefined) {
+      updateData.content = body.content;
+    }
+
+    if (body.url !== undefined) {
+      updateData.url = body.url;
+    }
+
+    if (
+      newCloudinaryPublicId !== undefined
+    ) {
+      updateData.cloudinaryPublicId =
+        newCloudinaryPublicId || null;
+    }
+
+    if (
+      newCloudinaryResourceType !== undefined
+    ) {
+      updateData.cloudinaryResourceType =
+        newCloudinaryResourceType || null;
+    }
+
+    /*
+     * Update PostgreSQL first.
+     */
     const updatedBlock =
       await prisma.contentBlock.update({
         where: {
           id: blockIdNumber,
         },
-        data: {
-          ...(body.type !== undefined && {
-            type: body.type,
-          }),
-
-          ...(body.content !== undefined && {
-            content: body.content,
-          }),
-
-          ...(body.url !== undefined && {
-            url: body.url,
-          }),
-        },
+        data: updateData,
       });
+
+    /*
+     * If a DIFFERENT Cloudinary asset was supplied,
+     * remove the old one.
+     *
+     * Example:
+     *
+     * old-image.png
+     *      ↓
+     * teacher selects new-image.png
+     *      ↓
+     * save new-image
+     *      ↓
+     * delete old-image
+     */
+    const replacingCloudinaryAsset =
+      newCloudinaryPublicId !== undefined &&
+      oldCloudinaryPublicId &&
+      newCloudinaryPublicId !==
+        oldCloudinaryPublicId;
+
+    if (replacingCloudinaryAsset) {
+      try {
+        await deleteCloudinaryAsset(
+          oldCloudinaryPublicId,
+          oldCloudinaryResourceType
+        );
+      } catch (cloudinaryError) {
+        /*
+         * The database already contains the new
+         * asset, so don't fail the entire PATCH.
+         *
+         * Log the orphaned asset so we can clean
+         * it later if necessary.
+         */
+        console.error(
+          "Old Cloudinary asset could not be deleted:",
+          cloudinaryError
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Content block updated successfully",
+      message:
+        "Content block updated successfully",
       block: updatedBlock,
     });
   } catch (error) {
-    console.error("Update content block error:", error);
+    console.error(
+      "Update content block error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to update content block",
+        message:
+          "Failed to update content block",
       },
       { status: 500 }
     );
   }
 }
+
+/*
+|--------------------------------------------------------------------------
+| DELETE
+|--------------------------------------------------------------------------
+| Deletes both:
+|
+| 1. Cloudinary asset
+| 2. PostgreSQL ContentBlock
+|
+|--------------------------------------------------------------------------
+*/
 
 export async function DELETE(
   request: Request,
@@ -162,18 +357,22 @@ export async function DELETE(
       );
     }
 
-    const block = await prisma.contentBlock.findFirst({
-      where: {
-        id: blockIdNumber,
-        topicId: topicIdNumber,
-        topic: {
-          moduleId: moduleIdNumber,
-          module: {
-            courseId,
+    /*
+     * Find the block and verify its hierarchy.
+     */
+    const block =
+      await prisma.contentBlock.findFirst({
+        where: {
+          id: blockIdNumber,
+          topicId: topicIdNumber,
+          topic: {
+            moduleId: moduleIdNumber,
+            module: {
+              courseId,
+            },
           },
         },
-      },
-    });
+      });
 
     if (!block) {
       return NextResponse.json(
@@ -185,6 +384,39 @@ export async function DELETE(
       );
     }
 
+    /*
+     * Delete Cloudinary asset first.
+     *
+     * If the Cloudinary asset cannot be deleted,
+     * we keep the database record so we don't end
+     * up with an inaccessible/orphaned file.
+     */
+    if (block.cloudinaryPublicId) {
+      try {
+        await deleteCloudinaryAsset(
+          block.cloudinaryPublicId,
+          block.cloudinaryResourceType
+        );
+      } catch (cloudinaryError) {
+        console.error(
+          "Cloudinary deletion error:",
+          cloudinaryError
+        );
+
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "The file could not be deleted from Cloudinary. The content was not deleted.",
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    /*
+     * Now delete the PostgreSQL record.
+     */
     await prisma.contentBlock.delete({
       where: {
         id: blockIdNumber,
@@ -193,15 +425,20 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "Content block deleted successfully",
+      message:
+        "Content block and associated file deleted successfully",
     });
   } catch (error) {
-    console.error("Delete content block error:", error);
+    console.error(
+      "Delete content block error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to delete content block",
+        message:
+          "Failed to delete content block",
       },
       { status: 500 }
     );
