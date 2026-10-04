@@ -1,3 +1,5 @@
+//authentication/role protection - whether the user is a student or  not
+
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 

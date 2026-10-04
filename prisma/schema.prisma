@@ -23,6 +23,8 @@ model User {
   collegeId Int?
   college   College? @relation(fields: [collegeId], references: [id], onDelete: SetNull)
 
+  studentAcademicProfile StudentAcademicProfile?
+
   courses  Course[]
   sessions Session[]
 
@@ -69,6 +71,8 @@ model Department {
   collegeId Int
   college   College @relation(fields: [collegeId], references: [id], onDelete: Cascade)
 
+  studentAcademicProfiles StudentAcademicProfile[]
+
   programmes Programme[]
   courses    Course[]
 
@@ -85,6 +89,8 @@ model Programme {
 
   departmentId Int
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  studentAcademicProfiles StudentAcademicProfile[]
 
   semesters Semester[]
 
@@ -103,6 +109,8 @@ model Semester {
 
   programmeId Int
   programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  studentAcademicProfiles StudentAcademicProfile[]
 
   courses CourseSemester[]
 
@@ -341,4 +349,31 @@ model QuestionOption {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([questionId])
+}
+
+// ================================
+// Student Academic Profile
+// ================================
+
+model StudentAcademicProfile {
+  id Int @id @default(autoincrement())
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  programmeId Int
+  programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+
+  semesterId Int
+  semester   Semester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departmentId])
+  @@index([programmeId])
+  @@index([semesterId])
 }
