@@ -4,12 +4,18 @@ import { requireTeacherWithCollege } from "@/lib/auth";
 
 export async function GET() {
   try {
-    // Make sure the user is a logged-in teacher
-    // who belongs to a college.
     const teacher = await requireTeacherWithCollege();
 
-    // Get only departments belonging to
-    // the teacher's college.
+    if (teacher.collegeId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
+
     const departments = await prisma.department.findMany({
       where: {
         collegeId: teacher.collegeId,

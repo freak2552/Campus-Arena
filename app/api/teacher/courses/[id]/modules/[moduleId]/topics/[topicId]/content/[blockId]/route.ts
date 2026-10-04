@@ -90,8 +90,6 @@ async function deleteCloudinaryAsset(
 | 1. Update PostgreSQL
 | 2. Delete the old Cloudinary asset
 |
-| This prevents the old file from remaining
-| unnecessarily in Cloudinary.
 |--------------------------------------------------------------------------
 */
 
@@ -186,10 +184,6 @@ export async function PATCH(
     /*
      * Determine whether the request is
      * providing a new Cloudinary asset.
-     *
-     * The frontend will send these values
-     * after we make the small Topic Builder
-     * change.
      */
     const newCloudinaryPublicId =
       body.cloudinaryPublicId !== undefined
@@ -203,9 +197,24 @@ export async function PATCH(
 
     /*
      * Build update data.
+     *
+     * The explicit union for `type` makes the value
+     * compatible with the Prisma ContentType enum
+     * without importing ContentType from the
+     * generated Prisma client.
      */
     const updateData: {
-      type?: string;
+      type?:
+        | "TEXT"
+        | "VIDEO"
+        | "YOUTUBE"
+        | "PDF"
+        | "ARTICLE"
+        | "IMAGE"
+        | "FUN_FACT"
+        | "GOOD_TO_KNOW"
+        | "COMMON_MISTAKE";
+
       content?: string | null;
       url?: string | null;
       cloudinaryPublicId?: string | null;
@@ -213,7 +222,16 @@ export async function PATCH(
     } = {};
 
     if (body.type !== undefined) {
-      updateData.type = body.type;
+      updateData.type = body.type as
+        | "TEXT"
+        | "VIDEO"
+        | "YOUTUBE"
+        | "PDF"
+        | "ARTICLE"
+        | "IMAGE"
+        | "FUN_FACT"
+        | "GOOD_TO_KNOW"
+        | "COMMON_MISTAKE";
     }
 
     if (body.content !== undefined) {
@@ -252,16 +270,6 @@ export async function PATCH(
     /*
      * If a DIFFERENT Cloudinary asset was supplied,
      * remove the old one.
-     *
-     * Example:
-     *
-     * old-image.png
-     *      ↓
-     * teacher selects new-image.png
-     *      ↓
-     * save new-image
-     *      ↓
-     * delete old-image
      */
     const replacingCloudinaryAsset =
       newCloudinaryPublicId !== undefined &&
@@ -279,9 +287,6 @@ export async function PATCH(
         /*
          * The database already contains the new
          * asset, so don't fail the entire PATCH.
-         *
-         * Log the orphaned asset so we can clean
-         * it later if necessary.
          */
         console.error(
           "Old Cloudinary asset could not be deleted:",
@@ -388,8 +393,7 @@ export async function DELETE(
      * Delete Cloudinary asset first.
      *
      * If the Cloudinary asset cannot be deleted,
-     * we keep the database record so we don't end
-     * up with an inaccessible/orphaned file.
+     * keep the database record.
      */
     if (block.cloudinaryPublicId) {
       try {

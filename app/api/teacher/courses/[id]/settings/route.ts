@@ -19,6 +19,16 @@ export async function GET(
   try {
     const teacher = await requireTeacherWithCollege();
 
+    if (teacher.collegeId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const courseId = Number(id);
 
@@ -158,6 +168,16 @@ export async function PATCH(
   try {
     const teacher = await requireTeacherWithCollege();
 
+    if (teacher.collegeId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const courseId = Number(id);
 
@@ -205,24 +225,24 @@ export async function PATCH(
 
     const departmentId = Number(body.departmentId);
 
-    const programmeIds = Array.isArray(
+    const programmeIds: number[] = Array.isArray(
       body.programmeIds
     )
-      ? [
-          ...new Set(
-            body.programmeIds.map(Number)
-          ),
-        ]
+      ? Array.from(
+        new Set(
+          body.programmeIds.map(Number)
+        )
+      )
       : [];
 
-    const semesterIds = Array.isArray(
+    const semesterIds: number[] = Array.isArray(
       body.semesterIds
     )
-      ? [
-          ...new Set(
-            body.semesterIds.map(Number)
-          ),
-        ]
+      ? Array.from(
+        new Set(
+          body.semesterIds.map(Number)
+        )
+      )
       : [];
 
     if (!Number.isInteger(departmentId)) {
@@ -397,8 +417,8 @@ export async function PATCH(
 
       credits:
         body.credits !== undefined &&
-        body.credits !== null &&
-        body.credits !== ""
+          body.credits !== null &&
+          body.credits !== ""
           ? Number(body.credits)
           : null,
 
@@ -577,6 +597,16 @@ export async function DELETE(
 ) {
   try {
     const teacher = await requireTeacherWithCollege();
+
+    if (teacher.collegeId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
 
     const { id } = await params;
     const courseId = Number(id);

@@ -9,7 +9,8 @@ import { requireTeacherWithCollege } from "@/lib/auth";
 export async function GET() {
   try {
     const teacher = await requireTeacherWithCollege();
-    if (!teacher.collegeId) {
+
+    if (teacher.collegeId === null) {
       return NextResponse.json(
         {
           success: false,
@@ -124,23 +125,26 @@ export async function GET() {
   }
 }
 
-
 // ============================================================
 // POST — Create a new course
 // ============================================================
 
 export async function POST(request: Request) {
   try {
-    // --------------------------------------------------------
     // 1. Get the logged-in teacher
-    // --------------------------------------------------------
-
     const teacher = await requireTeacherWithCollege();
 
-    // --------------------------------------------------------
-    // 2. Read request body
-    // --------------------------------------------------------
+    if (teacher.collegeId === null) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Teacher is not associated with a college.",
+        },
+        { status: 403 }
+      );
+    }
 
+    // 2. Read request body
     const body = await request.json();
 
     const {
@@ -156,10 +160,7 @@ export async function POST(request: Request) {
       studentAccess,
     } = body;
 
-    // --------------------------------------------------------
     // 3. Basic validation
-    // --------------------------------------------------------
-
     if (!title?.trim()) {
       return NextResponse.json(
         {
@@ -211,13 +212,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const parsedProgrammeIds = programmeIds.map(Number);
-    const parsedSemesterIds = semesterIds.map(Number);
+    const parsedProgrammeIds: number[] =
+      programmeIds.map(Number);
 
-    // Make sure all IDs are valid integers.
+    const parsedSemesterIds: number[] =
+      semesterIds.map(Number);
+
+    // Make sure all IDs are valid integers
     if (
       parsedProgrammeIds.some(
-        (id) => !Number.isInteger(id)
+        (id: number) => !Number.isInteger(id)
       )
     ) {
       return NextResponse.json(
@@ -231,7 +235,7 @@ export async function POST(request: Request) {
 
     if (
       parsedSemesterIds.some(
-        (id) => !Number.isInteger(id)
+        (id: number) => !Number.isInteger(id)
       )
     ) {
       return NextResponse.json(
@@ -243,10 +247,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // --------------------------------------------------------
     // 4. Verify department belongs to teacher's college
-    // --------------------------------------------------------
-
     const department = await prisma.department.findFirst({
       where: {
         id: parsedDepartmentId,
@@ -258,23 +259,18 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Department not found in your college.",
+          message: "Department not found in your college.",
         },
         { status: 404 }
       );
     }
 
-    // --------------------------------------------------------
     // 5. Verify programmes belong to selected department
-    // --------------------------------------------------------
-
     const programmes = await prisma.programme.findMany({
       where: {
         id: {
           in: parsedProgrammeIds,
         },
-
         departmentId: parsedDepartmentId,
       },
 
@@ -295,10 +291,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // --------------------------------------------------------
-    // 6. Verify semesters belong to the selected programmes
-    // --------------------------------------------------------
-
+    // 6. Verify semesters belong to selected programmes
     const semesters = await prisma.semester.findMany({
       where: {
         id: {
@@ -328,10 +321,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // --------------------------------------------------------
     // 7. Create course + programme/semester relationships
-    // --------------------------------------------------------
-
     const course = await prisma.course.create({
       data: {
         title: title.trim(),
@@ -347,8 +337,8 @@ export async function POST(request: Request) {
 
         credits:
           credits !== undefined &&
-            credits !== null &&
-            credits !== ""
+          credits !== null &&
+          credits !== ""
             ? Number(credits)
             : null,
 
@@ -358,14 +348,12 @@ export async function POST(request: Request) {
         studentAccess:
           studentAccess || "OPEN",
 
-        // One department
         department: {
           connect: {
             id: parsedDepartmentId,
           },
         },
 
-        // Multiple programmes
         programmes: {
           create: parsedProgrammeIds.map(
             (programmeId: number) => ({
@@ -378,7 +366,6 @@ export async function POST(request: Request) {
           ),
         },
 
-        // Multiple semesters
         semesters: {
           create: parsedSemesterIds.map(
             (semesterId: number) => ({
@@ -391,7 +378,6 @@ export async function POST(request: Request) {
           ),
         },
 
-        // Logged-in teacher
         teacher: {
           connect: {
             id: teacher.id,
@@ -432,10 +418,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // --------------------------------------------------------
     // 8. Success
-    // --------------------------------------------------------
-
     return NextResponse.json(
       {
         success: true,
