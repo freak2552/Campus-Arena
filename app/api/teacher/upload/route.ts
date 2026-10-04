@@ -13,23 +13,23 @@ export const runtime = "nodejs";
 const UPLOAD_CONFIG = {
   VIDEO: {
     resourceType: "video",
-    maxSize: 500 * 1024 * 1024, // 500 MB
-    maxSizeMB: 500,
+    maxSize: 10 * 1024 * 1024, // 500 MB
+    maxSizeMB: 10,
     allowedFormats: ["mp4", "webm", "mov", "avi", "mkv"],
   },
 
   PDF: {
     // Cloudinary stores PDFs as image assets.
     resourceType: "image",
-    maxSize: 20 * 1024 * 1024, // 20 MB
-    maxSizeMB: 20,
+    maxSize: 3 * 1024 * 1024, // 20 MB
+    maxSizeMB: 3,
     allowedFormats: ["pdf"],
   },
 
   IMAGE: {
     resourceType: "image",
-    maxSize: 5 * 1024 * 1024, // 5 MB
-    maxSizeMB: 5,
+    maxSize: 2 * 1024 * 1024, // 5 MB
+    maxSizeMB: 2,
     allowedFormats: [
       "jpg",
       "jpeg",

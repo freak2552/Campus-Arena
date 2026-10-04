@@ -3,6 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 
+const inputClass =
+  "mt-[7px] box-border w-full rounded-lg border border-[#d1d5db] p-3 text-[15px]";
+
+const linkClass = "text-[#0000ee] underline";
+
 export default function AdminRegisterPage() {
   const [fullName, setFullName] = useState("");
   const [userId, setUserId] = useState("");
@@ -69,47 +74,37 @@ export default function AdminRegisterPage() {
   };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "30px",
-        background: "#f4f7fb",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "650px",
-          background: "#ffffff",
-          padding: "40px",
-          borderRadius: "20px",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
-        }}
-      >
-        <div style={{ marginBottom: "30px" }}>
-          <Link href="/auth/login">
+    <main className="flex min-h-screen items-center justify-center bg-[#f4f7fb] p-[30px]">
+      <div className="w-full max-w-[650px] rounded-[20px] bg-white p-10 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
+        <div className="mb-[30px]">
+          <Link href="/auth/login" className={linkClass}>
             ← Back to Login
           </Link>
 
-          <h1 style={{ marginTop: "25px" }}>
+          <h1 className="mb-[21px] mt-[25px] text-[32px] font-bold">
             Create Admin Account
           </h1>
 
-          <p style={{ color: "#64748b" }}>
-            Create your admin account and register your college
-            on Campus Arena.
+          <p className="my-4 text-[#64748b]">
+            Create your admin account and register your college on Campus
+            Arena.
+          </p>
+
+          {/* Already have an account (moved to top) */}
+          <p className="mb-0 mt-4 text-[#64748b]">
+            Already have an account?{" "}
+            <Link href="/admin/login" className={linkClass}>
+              Login here
+            </Link>
           </p>
         </div>
 
         <form onSubmit={handleRegister}>
           {/* Admin Information */}
 
-          <h2>Admin Information</h2>
+          <h2 className="my-5 text-2xl font-bold">Admin Information</h2>
 
-          <div style={{ marginBottom: "18px" }}>
+          <div className="mb-[18px]">
             <label>Full Name</label>
 
             <input
@@ -118,17 +113,11 @@ export default function AdminRegisterPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "15px",
-            }}
-          >
+          <div className="grid grid-cols-2 gap-[15px]">
             <div>
               <label>User ID</label>
 
@@ -138,7 +127,7 @@ export default function AdminRegisterPage() {
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
 
@@ -151,18 +140,18 @@ export default function AdminRegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
           </div>
 
           {/* College */}
 
-          <h2 style={{ marginTop: "30px" }}>
+          <h2 className="mb-5 mt-[30px] text-2xl font-bold">
             College Information
           </h2>
 
-          <div style={{ marginBottom: "18px" }}>
+          <div className="mb-[18px]">
             <label>College Name</label>
 
             <input
@@ -171,38 +160,28 @@ export default function AdminRegisterPage() {
               value={collegeName}
               onChange={(e) => setCollegeName(e.target.value)}
               required
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
 
-          <div style={{ marginBottom: "18px" }}>
+          <div className="mb-[18px]">
             <label>College Code</label>
 
             <input
               type="text"
               placeholder="Example: YSM"
               value={collegeCode}
-              onChange={(e) =>
-                setCollegeCode(e.target.value.toUpperCase())
-              }
+              onChange={(e) => setCollegeCode(e.target.value.toUpperCase())}
               required
-              style={inputStyle}
+              className={inputClass}
             />
           </div>
 
           {/* Password */}
 
-          <h2 style={{ marginTop: "30px" }}>
-            Security
-          </h2>
+          <h2 className="mb-5 mt-[30px] text-2xl font-bold">Security</h2>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "15px",
-            }}
-          >
+          <div className="grid grid-cols-2 gap-[15px]">
             <div>
               <label>Password</label>
 
@@ -212,7 +191,7 @@ export default function AdminRegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
 
@@ -223,81 +202,34 @@ export default function AdminRegisterPage() {
                 type="password"
                 placeholder="Confirm password"
                 value={confirmPassword}
-                onChange={(e) =>
-                  setConfirmPassword(e.target.value)
-                }
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                style={inputStyle}
+                className={inputClass}
               />
             </div>
           </div>
 
           {/* Terms */}
 
-          <label
-            style={{
-              display: "flex",
-              gap: "10px",
-              marginTop: "25px",
-              alignItems: "center",
-            }}
-          >
+          <label className="mt-[25px] flex items-center gap-2.5">
             <input
               type="checkbox"
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}
             />
 
-            <span>
-              I agree to the Terms of Service and Privacy Policy.
-            </span>
+            <span>I agree to the Terms of Service and Privacy Policy.</span>
           </label>
 
           <button
             type="submit"
             disabled={loading}
-            style={{
-              width: "100%",
-              marginTop: "25px",
-              padding: "14px",
-              border: "none",
-              borderRadius: "10px",
-              background: "#2563eb",
-              color: "white",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
+            className="mt-[25px] w-full cursor-pointer rounded-[10px] border-none bg-[#2563eb] p-3.5 text-[16px] font-semibold text-white disabled:cursor-not-allowed"
           >
-            {loading
-              ? "Creating Account..."
-              : "Create Admin Account"}
+            {loading ? "Creating Account..." : "Create Admin Account"}
           </button>
-
-          <p
-            style={{
-              textAlign: "center",
-              marginTop: "20px",
-              color: "#64748b",
-            }}
-          >
-            Already have an account?{" "}
-            <Link href="/admin/login">
-              Login here
-            </Link>
-          </p>
         </form>
       </div>
     </main>
   );
 }
-
-const inputStyle = {
-  width: "100%",
-  padding: "12px",
-  marginTop: "7px",
-  border: "1px solid #d1d5db",
-  borderRadius: "8px",
-  fontSize: "15px",
-  boxSizing: "border-box" as const,
-};
