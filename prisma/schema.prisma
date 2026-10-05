@@ -26,6 +26,8 @@ model User {
   studentAcademicProfile StudentAcademicProfile?
 
   courses  Course[]
+  courseEnrollments CourseEnrollment[]
+  topicProgress StudentTopicProgress[]
   sessions Session[]
 
   createdAt DateTime @default(now())
@@ -196,6 +198,7 @@ model Course {
   updatedAt DateTime @updatedAt
 
   modules CourseModule[]
+  enrollments CourseEnrollment[]
 
   @@index([teacherId])
   @@index([departmentId])
@@ -267,6 +270,7 @@ model Topic {
   updatedAt DateTime @updatedAt
 
   contentBlocks  ContentBlock[]
+  studentProgress StudentTopicProgress[]
   knowledgeCheck KnowledgeCheck?
 
   @@index([moduleId])
@@ -376,4 +380,50 @@ model StudentAcademicProfile {
   @@index([departmentId])
   @@index([programmeId])
   @@index([semesterId])
+}
+
+
+// ================================
+// Student courses profile
+// ================================
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+}
+
+model CourseEnrollment {
+  id Int @id @default(autoincrement())
+
+  studentId Int
+  student   User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  courseId Int
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now())
+
+  @@unique([studentId, courseId])
+  @@index([courseId])
+}
+
+
+// ================================
+// Student topic progress
+// ================================
+
+model StudentTopicProgress {
+  id Int @id @default(autoincrement())
+
+  studentId Int
+  student   User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  topicId Int
+  topic   Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  completedAt DateTime @default(now())
+
+  @@unique([studentId, topicId])
+  @@index([topicId])
 }

@@ -1,13 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  Award,
+  Bell,
+  BookOpen,
+  Briefcase,
+  ChevronDown,
+  ClipboardCheck,
+  Compass,
+  GraduationCap,
+  HandHelping,
+  Heart,
+  Library,
+  ListChecks,
+  LogOut,
+  MapPin,
+  Medal,
+  Newspaper,
+  Star,
+  TrendingUp,
+  Trophy,
+  Users,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+type StudentProfile = {
+  departmentName: string;
+  programmeName: string;
+  semesterNumber: number;
+};
 
 type StudentUser = {
   fullName: string;
   userId: string;
   role: string;
+  profile: StudentProfile | null;
 };
 
 type MeResponse = {
@@ -17,17 +49,16 @@ type MeResponse = {
 };
 
 type CardItem = {
-  icon: string;
+  icon: LucideIcon;
   label: string;
 };
 
 type ArenaCardData = {
   key: string;
   href: string;
-  icon: string;
+  icon: LucideIcon;
   title: string;
-  /** Two lines, rendered with a <br /> between them */
-  description: [string, string];
+  description: string;
   items: CardItem[];
   cta: string;
   cardClass: string;
@@ -36,24 +67,22 @@ type ArenaCardData = {
   buttonClass: string;
 };
 
-
+// Change this if your me route lives at a different path
 const ME_ENDPOINT = "/api/student/me";
 
 const cards: ArenaCardData[] = [
   {
     key: "compete",
     href: "/student/compete",
-    icon: "🏆",
+    icon: Trophy,
     title: "Compete",
-    description: [
-      "Test your knowledge. Challenge",
-      "yourself. Climb the leaderboard.",
-    ],
+    description:
+      "Test your knowledge. Challenge yourself. Climb the leaderboard.",
     items: [
-      { icon: "♧", label: "Quizzes" },
-      { icon: "▣", label: "Exams" },
-      { icon: "🏆", label: "Tournaments" },
-      { icon: "♟", label: "Leaderboards & Badges" },
+      { icon: ListChecks, label: "Quizzes" },
+      { icon: ClipboardCheck, label: "Exams" },
+      { icon: Medal, label: "Tournaments" },
+      { icon: Award, label: "Leaderboards & Badges" },
     ],
     cta: "Enter Compete",
     cardClass:
@@ -65,14 +94,14 @@ const cards: ArenaCardData[] = [
   {
     key: "peer",
     href: "/student/peer-to-peer",
-    icon: "👥",
+    icon: Users,
     title: "Peer-to-Peer",
-    description: ["Learn together. Help each other.", "Grow as a community."],
+    description: "Learn together. Help each other. Grow as a community.",
     items: [
-      { icon: "♧", label: "Find or offer help" },
-      { icon: "◉", label: "Meet on campus" },
-      { icon: "♟", label: "Earn XP & build your profile" },
-      { icon: "●", label: "Be a part of a supportive community" },
+      { icon: HandHelping, label: "Find or offer help" },
+      { icon: MapPin, label: "Meet on campus" },
+      { icon: Zap, label: "Earn XP & build your profile" },
+      { icon: Heart, label: "Be a part of a supportive community" },
     ],
     cta: "Enter Peer-to-Peer",
     cardClass:
@@ -84,18 +113,18 @@ const cards: ArenaCardData[] = [
   {
     key: "discover",
     href: "/student/discover",
-    icon: "◈",
+    icon: Compass,
     title: "Discover",
-    description: ["Explore opportunities. Stay updated.", "Get inspired."],
+    description: "Explore opportunities. Stay updated. Get inspired.",
     items: [
-      { icon: "▣", label: "Career opportunities" },
-      { icon: "♟", label: "Useful resources" },
-      { icon: "↟", label: "Tech & industry updates" },
-      { icon: "★", label: "Student achievements" },
+      { icon: Briefcase, label: "Career opportunities" },
+      { icon: Library, label: "Useful resources" },
+      { icon: Newspaper, label: "Tech & industry updates" },
+      { icon: Star, label: "Student achievements" },
     ],
     cta: "Enter Discover",
     cardClass:
-      "bg-[linear-gradient(145deg,rgba(242,249,255,0.98),rgba(228,243,255,0.95))] border-[#b9dafe] max-[1100px]:col-span-2 max-[700px]:col-auto",
+      "bg-[linear-gradient(145deg,rgba(242,249,255,0.98),rgba(228,243,255,0.95))] border-[#b9dafe] sm:col-span-2 lg:col-span-1",
     iconClass: "bg-[linear-gradient(145deg,#2f8cf4,#116fe5)]",
     itemIconClass: "text-[#1673e5]",
     buttonClass: "bg-[linear-gradient(90deg,#348cf1,#1874e9)] text-white",
@@ -106,16 +135,23 @@ const handwritten = "[font-family:'Comic_Sans_MS','Segoe_Print',cursive]";
 
 const pageClass = [
   "relative min-h-screen overflow-hidden",
-  "px-[5%] pt-4 pb-[45px] max-[1100px]:px-[4%]",
+  "px-4 pt-4 pb-10 sm:px-[5%]",
   "bg-[#f9fcff] text-[#111735]",
   "bg-[url('/images/student_main-home_bg_pc.png')] max-[700px]:bg-[url('/images/student_main-home_bg_mobile.png')]",
   "bg-cover bg-top bg-no-repeat bg-scroll",
   "font-[Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe_UI',sans-serif]",
 ].join(" ");
 
-const bottomFeatureClass = "flex items-center gap-2.5";
-const bottomFeatureIconClass = "text-[#101735] text-[22px] font-bold";
-const bottomDividerClass = "w-px h-7 bg-[#aebbd0]";
+const containerClass = "mx-auto w-full max-w-[1050px]";
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) return "ST";
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function StudentHomePage() {
   const router = useRouter();
@@ -125,6 +161,10 @@ export default function StudentHomePage() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState<number>(0);
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Load the logged-in student
   useEffect(() => {
     const controller = new AbortController();
 
@@ -166,6 +206,31 @@ export default function StudentHomePage() {
     return () => controller.abort();
   }, [router, reloadKey]);
 
+  // Close the profile menu when clicking outside of it
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handleClick(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClick);
+
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
+  async function handleLogout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      window.location.href = "/auth/login";
+    }
+  }
+
   if (loading) {
     return (
       <main className={`${pageClass} flex items-center justify-center`}>
@@ -197,64 +262,112 @@ export default function StudentHomePage() {
   const timeOfDay: "morning" | "afternoon" | "evening" =
     hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
 
+  const firstName = user.fullName.trim().split(/\s+/)[0] || "Student";
+
+  const profileLine = user.profile
+    ? `Student • ${user.profile.programmeName} • Sem ${user.profile.semesterNumber}`
+    : "Student";
+
   return (
     <main className={pageClass}>
-      {/* Background decoration */}
-      <div className="pointer-events-none absolute -left-[225px] top-[135px] h-[340px] w-[340px] rounded-full bg-[rgba(88,180,255,0.12)] blur-[70px]" />
-      <div className="pointer-events-none absolute -right-[225px] top-[190px] h-[340px] w-[340px] rounded-full bg-[rgba(88,180,255,0.12)] blur-[70px]" />
-
       {/* HEADER */}
-      <header className="relative z-10 mx-auto flex max-w-[1030px] items-center justify-between">
-        <div>
-          <div className="text-[29px] font-extrabold leading-none tracking-[-1.5px] text-[#10152f] max-[700px]:text-[28px]">
+      <header
+        className={`${containerClass} relative z-20 flex items-center justify-between gap-3`}
+      >
+        <div className="min-w-0">
+          <div className="text-[26px] font-extrabold leading-none tracking-[-1.5px] text-[#10152f] sm:text-[29px]">
             Campus<span className="text-[#1164db]">Arena</span>
           </div>
 
-          <div className="mt-1.5 text-[12px] text-[#596887]">
+          <div className="mt-1.5 text-[11px] text-[#596887] sm:text-xs">
             Learn&nbsp; • &nbsp;Compete&nbsp; • &nbsp;Connect&nbsp; • &nbsp;Grow
           </div>
         </div>
 
-        <div className="ml-auto flex translate-x-[28px] items-center gap-[11px] max-[700px]:translate-x-0">
-          <div className="relative mr-2.5 rotate-180 text-[24px] max-[700px]:hidden">
-            ♧
-            <span className="absolute -right-[7px] -top-1 flex h-3.5 w-3.5 rotate-180 items-center justify-center rounded-full bg-[#ef2d36] text-[8px] font-bold text-white">
-              2
-            </span>
-          </div>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[#25345e] transition hover:bg-white/70"
+          >
+            <Bell size={22} />
+          </button>
 
-          <div className="flex h-[39px] w-[39px] items-center justify-center rounded-full border-2 border-white bg-[linear-gradient(145deg,#222d43,#111827)] text-[10px] font-bold text-white shadow-[0_2px_9px_rgba(0,0,0,0.12)]">
-            p
-          </div>
+          <div ref={menuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              className="flex items-center gap-2 rounded-full p-1 transition hover:bg-white/70 sm:pr-2"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[linear-gradient(145deg,#222d43,#111827)] text-xs font-bold text-white shadow-[0_2px_9px_rgba(0,0,0,0.12)]">
+                {getInitials(user.fullName)}
+              </span>
 
-          <div className="flex flex-col gap-[3px] max-[700px]:hidden">
-            <strong className="text-[12px]">{user.fullName || "Student"}</strong>
-            <small className="text-[11px] text-[#687695]">
-              Student&nbsp; • &nbsp;IT Sem 5
-            </small>
-          </div>
+              <span className="hidden min-w-0 flex-col text-left sm:flex">
+                <strong className="max-w-[220px] truncate text-sm">
+                  {user.fullName || "Student"}
+                </strong>
+                <small className="max-w-[220px] truncate text-xs text-[#687695]">
+                  {profileLine}
+                </small>
+              </span>
 
-          <div className="ml-3.5 -translate-y-[3px] text-[23px]">⌄</div>
+              <ChevronDown
+                size={18}
+                className={`text-[#25345e] transition-transform ${
+                  menuOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-30 mt-2 w-64 overflow-hidden rounded-xl border border-[#dce7f4] bg-white shadow-lg"
+              >
+                {/* Name + class, always visible here (also on phones) */}
+                <div className="border-b border-[#eef2f8] px-4 py-3 sm:hidden">
+                  <p className="truncate text-sm font-semibold">
+                    {user.fullName || "Student"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-[#687695]">{profileLine}</p>
+                </div>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-[#25345e] transition hover:bg-[#f4f8fd]"
+                >
+                  <LogOut size={16} />
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* MAIN */}
-      <section className="relative z-[5] mx-auto mb-3.5 mt-5 text-center max-[700px]:mt-[35px]">
-        <p className="mb-[7px] text-[16px] text-[#344267]">
-          Good {timeOfDay}, {user.fullName || "Student"}! 👋
+      {/* HERO */}
+      <section
+        className={`${containerClass} relative z-10 mb-6 mt-6 text-center sm:mt-8`}
+      >
+        <p className="mb-2 text-base text-[#344267]">
+          Good {timeOfDay}, {firstName}! 👋
         </p>
 
-        <h1 className="text-[36px] font-extrabold leading-[1.15] tracking-[-1.4px] max-[700px]:text-[31px]">
+        <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-[-1px] sm:text-[36px] sm:tracking-[-1.4px]">
           What do you want to do today?
         </h1>
 
-        <p className="mt-1.5 text-[15px] text-[#5a6788] max-[700px]:text-[16px]">
+        <p className="mt-2 text-[15px] text-[#5a6788]">
           Choose a path and make progress.
         </p>
 
-        {/* SAME CAMPUS */}
         <div
-          className={`absolute right-[1%] top-[13px] -rotate-[5deg] text-center text-[15px] leading-[1.4] text-[#25345e] max-[1100px]:hidden ${handwritten}`}
+          className={`absolute right-0 top-0 hidden -rotate-[5deg] text-center text-[15px] leading-[1.4] text-[#25345e] lg:block ${handwritten}`}
         >
           Same Campus
           <br />
@@ -263,115 +376,122 @@ export default function StudentHomePage() {
         </div>
       </section>
 
-      {/* CARDS */}
-      <section className="relative z-[6] mx-auto mt-3.5 grid max-w-[1050px] grid-cols-3 gap-[18px] max-[1100px]:grid-cols-2 max-[700px]:grid-cols-1">
-        {cards.map((card) => (
-          <Link
-            key={card.key}
-            href={card.href}
-            className={[
-              "relative min-h-[365px] overflow-hidden rounded-2xl border px-[23px] pb-[18px] pt-5 text-[#101735]",
-              "transition-[transform,box-shadow] duration-200 ease-[ease]",
-              "hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(35,65,110,0.1)]",
-              "max-[700px]:min-h-[430px]",
-              card.cardClass,
-            ].join(" ")}
-          >
-            <div
-              className={`mb-2 flex h-16 w-16 items-center justify-center rounded-[14px] text-[29px] ${card.iconClass}`}
-            >
-              {card.icon}
-            </div>
-
-            <h2 className="text-[24px] font-bold leading-[1.1] tracking-[-0.8px]">
-              {card.title}
-            </h2>
-
-            <p className="mt-1 text-[14px] leading-[1.4] text-[#48587d]">
-              {card.description[0]}
-              <br />
-              {card.description[1]}
-            </p>
-
-            <div className="mb-[9px] mt-[13px] h-px bg-[rgba(47,66,98,0.14)]" />
-
-            <ul className="flex flex-col gap-[7px]">
-              {card.items.map((item) => (
-                <li
-                  key={item.label}
-                  className="flex items-center gap-2.5 text-[13px] text-[#243253]"
-                >
-                  <span
-                    className={`w-[21px] text-center text-[15px] ${card.itemIconClass}`}
-                  >
-                    {item.icon}
-                  </span>{" "}
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-
-            <div
-              className={`absolute inset-x-[22px] bottom-[17px] flex h-[43px] items-center justify-center gap-[18px] rounded-[28px] text-[14px] font-bold ${card.buttonClass}`}
-            >
-              {card.cta}
-              <b className="text-[22px] font-normal">→</b>
-            </div>
-          </Link>
-        ))}
-      </section>
-
-      {/* MY LEARNING */}
+      {/* MY LEARNING (first) */}
       <Link
-        href="/student/learning"
-        className="relative z-[7] mx-auto mt-[18px] flex min-h-[70px] max-w-[870px] items-center rounded-2xl border border-[#dce7f4] bg-[rgba(255,255,255,0.86)] px-[18px] py-2.5 text-[#101735] shadow-[0_5px_20px_rgba(40,75,120,0.05)] max-[1100px]:mx-0 max-[700px]:flex-wrap max-[700px]:gap-2.5"
+        href="/student/courses"
+        className={`${containerClass} relative z-10 mb-5 flex flex-col gap-4 rounded-2xl border border-[#dce7f4] bg-[rgba(255,255,255,0.9)] p-4 text-[#101735] shadow-[0_5px_20px_rgba(40,75,120,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(40,75,120,0.1)] sm:flex-row sm:items-center`}
       >
-        <div className="flex h-[45px] w-[52px] items-center justify-center rounded-[13px] border border-[#cbdff7] bg-[#eaf3ff] text-[22px] text-[#17355e]">
-          ▣
+        <div className="flex items-center gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#cbdff7] bg-[#eaf3ff] text-[#17355e]">
+            <BookOpen size={24} />
+          </span>
+
+          <div className="min-w-0">
+            <h3 className="text-[17px] font-bold">My Learning</h3>
+
+            <p className="mt-0.5 text-[13px] text-[#566584]">
+              Access your courses, notes, assignments and track your progress.
+            </p>
+          </div>
         </div>
 
-        <div className="ml-[15px] max-[700px]:ml-0 max-[700px]:max-w-[calc(100%-80px)]">
-          <h3 className="text-[17px] font-bold">My Learning</h3>
-
-          <p className="mt-[3px] text-[13px] text-[#566584]">
-            Access your courses, notes, assignments and track your progress.
-          </p>
-        </div>
-
-        <div className="ml-auto whitespace-nowrap rounded-[25px] border border-[#d1e1f6] bg-[#f4f8fd] px-[17px] py-2.5 text-[12px] font-bold max-[700px]:ml-0 max-[700px]:w-full max-[700px]:text-center">
+        <span className="flex items-center justify-center gap-3 whitespace-nowrap rounded-full border border-[#d1e1f6] bg-[#f4f8fd] px-[17px] py-2.5 text-xs font-bold sm:ml-auto">
           View My Courses
-          <b className="ml-[11px] text-[20px] font-normal">→</b>
-        </div>
+          <ArrowRight size={16} />
+        </span>
       </Link>
 
+      {/* CARDS */}
+      <section
+        className={`${containerClass} relative z-10 grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-3`}
+      >
+        {cards.map((card) => {
+          const Icon = card.icon;
+
+          return (
+            <Link
+              key={card.key}
+              href={card.href}
+              className={`flex flex-col rounded-2xl border p-5 text-[#101735] transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(35,65,110,0.1)] sm:p-6 ${card.cardClass}`}
+            >
+              <span
+                className={`mb-3 flex h-14 w-14 items-center justify-center rounded-2xl text-white ${card.iconClass}`}
+              >
+                <Icon size={28} />
+              </span>
+
+              <h2 className="text-2xl font-bold leading-[1.1] tracking-[-0.8px]">
+                {card.title}
+              </h2>
+
+              <p className="mt-1 text-sm leading-[1.4] text-[#48587d]">
+                {card.description}
+              </p>
+
+              <div className="my-4 h-px bg-[rgba(47,66,98,0.14)]" />
+
+              <ul className="flex flex-col gap-2.5">
+                {card.items.map((item) => {
+                  const ItemIcon = item.icon;
+
+                  return (
+                    <li
+                      key={item.label}
+                      className="flex items-center gap-3 text-[13px] text-[#243253]"
+                    >
+                      <ItemIcon
+                        size={18}
+                        className={`shrink-0 ${card.itemIconClass}`}
+                      />
+                      {item.label}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="mt-auto pt-6">
+                <span
+                  className={`flex h-11 items-center justify-center gap-3 rounded-full text-sm font-bold ${card.buttonClass}`}
+                >
+                  {card.cta}
+                  <ArrowRight size={18} />
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+      </section>
+
       {/* BOTTOM */}
-      <div className="relative z-[8] mx-auto mt-8 min-h-[75px] max-w-[1050px]">
+      <div
+        className={`${containerClass} relative z-10 mt-10 flex flex-col items-center gap-6 lg:min-h-[75px]`}
+      >
         <div
-          className={`absolute bottom-0 left-0 -rotate-3 text-[15px] leading-[1.4] text-[#25345e] max-[700px]:relative max-[700px]:mt-[25px] ${handwritten}`}
+          className={`-rotate-3 text-center text-[15px] leading-[1.4] text-[#25345e] lg:absolute lg:bottom-0 lg:left-0 lg:text-left ${handwritten}`}
         >
           “A better you
           <br />
           builds a brighter tomorrow.”
-          <div className="mt-1.5 h-[3px] w-[65px] -rotate-[7deg] bg-[#f4b900]" />
+          <div className="mt-1.5 h-[3px] w-[65px] -rotate-[7deg] bg-[#f4b900] max-lg:mx-auto" />
         </div>
 
-        <div className="flex items-center justify-center gap-6 pt-7 text-[12px] text-[#506083] max-[700px]:hidden">
-          <div className={bottomFeatureClass}>
-            <span className={bottomFeatureIconClass}>♙</span>
+        <div className="hidden items-center justify-center gap-6 pt-2 text-xs text-[#506083] sm:flex">
+          <div className="flex items-center gap-2.5">
+            <Users size={22} className="text-[#101735]" />
             For Students
           </div>
 
-          <i className={bottomDividerClass} />
+          <span className="h-7 w-px bg-[#aebbd0]" />
 
-          <div className={bottomFeatureClass}>
-            <span className={bottomFeatureIconClass}>◇</span>
+          <div className="flex items-center gap-2.5">
+            <GraduationCap size={22} className="text-[#101735]" />
             By Our College
           </div>
 
-          <i className={bottomDividerClass} />
+          <span className="h-7 w-px bg-[#aebbd0]" />
 
-          <div className={bottomFeatureClass}>
-            <span className={bottomFeatureIconClass}>▮▮▮</span>
+          <div className="flex items-center gap-2.5">
+            <TrendingUp size={22} className="text-[#101735]" />
             For A Brighter Future
           </div>
         </div>
