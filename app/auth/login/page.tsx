@@ -2,263 +2,205 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
-type Role = "student" | "teacher";
+import { AuthShell, ui } from "../component/theme";
+import type { Role } from "../component/theme";
 
 export default function LoginPage() {
-    const [role, setRole] = useState<Role>("student");
-    const [userId, setUserId] = useState("");
-    const [password, setPassword] = useState("");
-    const [showLogin, setShowLogin] = useState(false);
+  const [role, setRole] = useState<Role>("student");
+  const [userId, setUserId] = useState("");
+  const [password, setPassword] = useState("");
+  const [showLogin, setShowLogin] = useState(false);
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-        try {
-            const response = await fetch("/api/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    role,
-                    userId,
-                    password,
-                }),
-            });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          role,
+          userId,
+          password,
+        }),
+      });
 
-            const data = await response.json();
+      const data = await response.json();
 
-            if (!response.ok) {
-                alert(data.message || "Login failed");
-                return;
-            }
+      if (!response.ok) {
+        alert(data.message || "Login failed");
+        return;
+      }
 
-            console.log("Logged in user:", data.user);
+      console.log("Logged in user:", data.user);
 
-            alert("Login successful!");
+      alert("Login successful!");
 
-            // Redirect to student dashboard
-            if (data.user.role === "STUDENT") {
-                window.location.href = "/student";
-            } else if (data.user.role === "TEACHER") {
-                window.location.href = "/teacher";
-            }
-        } catch (error) {
-            console.error("Login error:", error);
-            alert("Unable to connect to the server.");
-        }
-    };
+      // Redirect to student dashboard
+      if (data.user.role === "STUDENT") {
+        window.location.href = "/student";
+      } else if (data.user.role === "TEACHER") {
+        window.location.href = "/teacher";
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Unable to connect to the server.");
+    }
+  };
 
-    const handleGoogleLogin = () => {
-        // Google authentication will be connected later.
-        console.log("Google login clicked");
-    };
+  const handleGoogleLogin = () => {
+    // Google authentication will be connected later.
+    console.log("Google login clicked");
+  };
 
-    return (
-        <main className="auth-page login-page">
+  return (
+    <AuthShell
+      role={role}
+      mobileCardOpen={showLogin}
+      onMobileLogin={() => setShowLogin(true)}
+    >
+      <div className={ui.card}>
+        {/* Mobile back button */}
+        <button
+          type="button"
+          className={ui.mobileBack}
+          onClick={() => setShowLogin(false)}
+        >
+          ← Back
+        </button>
 
-            {/* Campus background */}
-            <div className="auth-background" />
+        {/* Login heading */}
+        <div className={ui.heading}>
+          <h1 className={ui.title}>Welcome to Campus Arena</h1>
 
-            {/* Mobile Login Button */}
-            <button
-                type="button"
-                className="mobile-login-button"
-                onClick={() => setShowLogin(true)}
-            >
-                Login <span>→</span>
-            </button>
+          <p className={ui.subtitle}>Sign in to continue your journey</p>
+        </div>
 
-            {/* Login container */}
-            <section
-                className={`auth-container ${showLogin ? "mobile-login-open" : ""
-                    }`}
-            >
-                <div className="login-card">
+        {/* Student / Teacher */}
+        <div className={ui.roleContainer}>
+          <button
+            type="button"
+            className={ui.roleButton(role === "student", "student")}
+            aria-pressed={role === "student"}
+            onClick={() => setRole("student")}
+          >
+            <span className={ui.roleIcon}>🎓</span>
 
-                    {/* Mobile back button */}
-                    <button
-                        type="button"
-                        className="mobile-back-button"
-                        onClick={() => setShowLogin(false)}
-                    >
-                        ← Back
-                    </button>
+            <span className={ui.roleContent}>
+              <strong className={ui.roleName}>Student</strong>
 
-                    {/* Login heading */}
-                    <div className="login-heading">
-                        <h1>Welcome to Campus Arena</h1>
+              <small className={ui.roleHint}>Learn · Compete · Grow</small>
+            </span>
+          </button>
 
-                        <p>
-                            Sign in to continue your journey
-                        </p>
-                    </div>
+          <button
+            type="button"
+            className={ui.roleButton(role === "teacher", "teacher")}
+            aria-pressed={role === "teacher"}
+            onClick={() => setRole("teacher")}
+          >
+            <span className={ui.roleIcon}>👨‍🏫</span>
 
-                    {/* Student / Teacher */}
-                    <div className="role-container">
+            <span className={ui.roleContent}>
+              <strong className={ui.roleName}>Teacher</strong>
 
-                        <button
-                            type="button"
-                            className={`role-button ${role === "student"
-                                    ? "active student"
-                                    : ""
-                                }`}
-                            onClick={() => setRole("student")}
-                        >
-                            <span className="role-icon">
-                                🎓
-                            </span>
+              <small className={ui.roleHint}>Teach · Guide · Inspire</small>
+            </span>
+          </button>
+        </div>
 
-                            <span className="role-content">
-                                <strong>Student</strong>
+        {/* Login form */}
+        <form onSubmit={handleLogin} className={ui.form}>
+          {/* User ID */}
+          <div className={ui.inputGroup}>
+            <label htmlFor="userId" className={ui.label}>
+              {role === "student"
+                ? "Student ID / User ID"
+                : "Teacher ID / Employee ID"}
+            </label>
 
-                                <small>
-                                    Learn · Compete · Grow
-                                </small>
-                            </span>
-                        </button>
+            <input
+              id="userId"
+              type="text"
+              className={ui.input}
+              placeholder={
+                role === "student"
+                  ? "Enter your student ID"
+                  : "Enter your teacher ID"
+              }
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              autoComplete="username"
+              required
+            />
+          </div>
 
-                        <button
-                            type="button"
-                            className={`role-button ${role === "teacher"
-                                    ? "active teacher"
-                                    : ""
-                                }`}
-                            onClick={() => setRole("teacher")}
-                        >
-                            <span className="role-icon">
-                                👨‍🏫
-                            </span>
+          {/* Password */}
+          <div className={ui.inputGroup}>
+            <label htmlFor="password" className={ui.label}>
+              Password
+            </label>
 
-                            <span className="role-content">
-                                <strong>Teacher</strong>
+            <input
+              id="password"
+              type="password"
+              className={ui.input}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </div>
 
-                                <small>
-                                    Teach · Guide · Inspire
-                                </small>
-                            </span>
-                        </button>
+          {/* Forgot password */}
+          <div className={ui.forgot}>
+            <Link href="/auth/forgot-password" className={ui.link}>
+              Forgot password?
+            </Link>
+          </div>
 
-                    </div>
+          {/* Sign in */}
+          <button type="submit" className={ui.primaryButton}>
+            <span>Sign In</span>
+            <span className={ui.arrow}>→</span>
+          </button>
+        </form>
 
-                    {/* Login form */}
-                    <form
-                        onSubmit={handleLogin}
-                        className="login-form"
-                    >
+        {/* OR */}
+        <div className={ui.divider}>
+          <span className={ui.dividerLine} />
+          <p>OR</p>
+          <span className={ui.dividerLine} />
+        </div>
 
-                        {/* User ID */}
-                        <div className="input-group">
+        {/* Google */}
+        <button
+          type="button"
+          className={ui.googleButton}
+          onClick={handleGoogleLogin}
+        >
+          <span className={ui.googleIcon}>G</span>
 
-                            <label htmlFor="userId">
-                                {role === "student"
-                                    ? "Student ID / User ID"
-                                    : "Teacher ID / Employee ID"}
-                            </label>
+          <span>Continue with Google</span>
+        </button>
 
-                            <input
-                                id="userId"
-                                type="text"
-                                placeholder={
-                                    role === "student"
-                                        ? "Enter your student ID"
-                                        : "Enter your teacher ID"
-                                }
-                                value={userId}
-                                onChange={(e) =>
-                                    setUserId(e.target.value)
-                                }
-                                autoComplete="username"
-                                required
-                            />
+        {/* Create account and admin login */}
+        <div className={ui.cardBottom}>
+          <p>
+            New here?{" "}
+            <Link href="/auth/register" className={ui.link}>
+              Create an account
+            </Link>
+          </p>
 
-                        </div>
-
-                        {/* Password */}
-                        <div className="input-group">
-
-                            <label htmlFor="password">
-                                Password
-                            </label>
-
-                            <input
-                                id="password"
-                                type="password"
-                                placeholder="Enter your password"
-                                value={password}
-                                onChange={(e) =>
-                                    setPassword(e.target.value)
-                                }
-                                autoComplete="current-password"
-                                required
-                            />
-
-                        </div>
-
-                        {/* Forgot password */}
-                        <div className="forgot-password">
-
-                            <Link href="/auth/forgot-password">
-                                Forgot password?
-                            </Link>
-
-                        </div>
-
-                        {/* Sign in */}
-                        <button
-                            type="submit"
-                            className="login-button"
-                        >
-                            <span>Sign In</span>
-                            <span className="arrow">→</span>
-                        </button>
-
-                    </form>
-
-                    {/* OR */}
-                    <div className="divider">
-                        <span />
-                        <p>OR</p>
-                        <span />
-                    </div>
-
-                    {/* Google */}
-                    <button
-                        type="button"
-                        className="google-button"
-                        onClick={handleGoogleLogin}
-                    >
-                        <span className="google-icon">
-                            G
-                        </span>
-
-                        <span>
-                            Continue with Google
-                        </span>
-                    </button>
-
-                    {/* Create account and admin login */}
-                    <div className="card-bottom">
-
-                        <p className="register-text">
-                            New here?{" "}
-                            <Link href="/auth/register">
-                                Create an account
-                            </Link>
-                        </p>
-
-                        <Link
-                            href="/admin/register"
-                            className="admin-login"
-                        >
-                            ⚙ Admin Login
-                        </Link>
-
-                    </div>
-
-                </div>
-            </section>
-        </main>
-    );
+          <Link href="/admin/register" className={ui.adminLogin}>
+            ⚙ Admin Login
+          </Link>
+        </div>
+      </div>
+    </AuthShell>
+  );
 }
